@@ -1,0 +1,84 @@
+{
+    "Comment": "A state machine that extracts text from provided image and PDF files.",
+    "StartAt": "Check File Type",
+    "States": {
+        "Check File Type": {
+            "Type": "Task",
+            "Resource": "${FileTypeFunctionArn}",
+            "Retry": [
+                {
+                    "ErrorEquals": [
+                        "States.TaskFailed"
+                    ],
+                    "IntervalSeconds": 15,
+                    "MaxAttempts": 5,
+                    "BackoffRate": 1.5
+                }
+            ],
+            "Next": "PDF, Image, or Invalid?"
+        },
+        "PDF, Image, or Invalid?": {
+            "Type": "Choice",
+            "Choices": [
+                {
+                    "Variable": "$.file_type",
+                    "StringEquals": "PDF",
+                    "Next": "Convert PDF To Image"
+                },
+                {
+                    "Variable": "$.file_type",
+                    "StringEquals": "Image",
+                    "Next": "Extract Text"
+                }
+            ],
+            "Default": "Update File"
+        },
+        "Convert PDF To Image": {
+            "Type": "Task",
+            "Resource": "${PDFConverterFunctionArn}",
+            "Retry": [
+                {
+                    "ErrorEquals": [
+                        "States.TaskFailed"
+                    ],
+                    "IntervalSeconds": 2,
+                    "MaxAttempts": 3,
+                    "BackoffRate": 1
+                }
+            ],
+            "ResultPath": "$.images",
+            "Next": "Extract Text"
+        },
+        "Extract Text": {
+            "Type": "Task",
+            "Resource": "${TextExtractionFunctionArn}",
+            "Retry": [
+                {
+                    "ErrorEquals": [
+                        "States.TaskFailed"
+                    ],
+                    "IntervalSeconds": 2,
+                    "MaxAttempts": 3,
+                    "BackoffRate": 1
+                }
+            ],
+            "ResultPath": "$.text_output",
+            "Next": "Update File"
+        },
+        "Update File": {
+            "Type": "Task",
+            "Resource": "${FileUpdaterFunctionArn}",
+            "Retry": [
+                {
+                    "ErrorEquals": [
+                        "States.TaskFailed"
+                    ],
+                    "IntervalSeconds": 20,
+                    "MaxAttempts": 5,
+                    "BackoffRate": 10
+                }
+            ],
+            "End": true
+        }
+    }
+}

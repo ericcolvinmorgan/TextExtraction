@@ -1,0 +1,246 @@
+# This is the SAM template that represents the architecture of your serverless application
+# https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/serverless-sam-template-basics.html
+
+# The AWSTemplateFormatVersion identifies the capabilities of the template
+# https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/format-version-structure.html
+AWSTemplateFormatVersion: 2010-09-09
+Description: >-
+  Text extraction API, web client, and services.
+
+# Transform section specifies one or more macros that AWS CloudFormation uses to process your template
+# https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/transform-section-structure.html
+Transform:
+- AWS::Serverless-2016-10-31
+
+# Resources declares the AWS resources that you want to include in the stack
+# https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/resources-section-structure.html
+Resources:
+  #API MACHINE RESOURCES
+  # Each Lambda function is defined by properties:
+  # https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#awsserverlessfunction
+
+  # This is a Lambda function config associated with the source code: get-all-items.js
+  getDocumentsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: api/src
+      Handler: handlers/get-documents.getDocumentsHandler
+      Runtime: nodejs14.x
+      MemorySize: 128
+      Timeout: 100
+      Description: A simple example includes a HTTP get method to get all items from a DynamoDB table.
+      # Policies:
+        # Give Create/Read/Update/Delete Permissions to the SampleTable
+        # - DynamoDBCrudPolicy:
+        #     TableName: !Ref SampleTable
+      Environment:
+        Variables:
+          # Make table name accessible as environment variable from function code during execution
+          SAMPLE_TABLE: ''
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            Path: /
+            Method: GET
+  # Each Lambda function is defined by properties:
+  # https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#awsserverlessfunction
+
+  # This is a Lambda function config associated with the source code: get-by-id.js
+  getDocumentByIdFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: api/src
+      Handler: handlers/get-document-by-id.getByIdHandler
+      Runtime: nodejs14.x
+      MemorySize: 128
+      Timeout: 100
+      Description: A simple example includes a HTTP get method to get one item by id from a DynamoDB table.
+      # Policies:
+      #   # Give Create/Read/Update/Delete Permissions to the SampleTable
+      #   - DynamoDBCrudPolicy:
+      #       TableName: !Ref SampleTable
+      Environment:
+        Variables:
+          # Make table name accessible as environment variable from function code during execution
+          SAMPLE_TABLE: ''
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            Path: /{id}
+            Method: GET
+  # Each Lambda function is defined by properties:
+  # https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#awsserverlessfunction
+
+  # This is a Lambda function config associated with the source code: put-item.js
+  putDocumentFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: api/src
+      Handler: handlers/put-document.putItemHandler
+      Runtime: nodejs14.x
+      MemorySize: 128
+      Timeout: 100
+      Description: Uploads a document to the documents workstream.
+      Environment:
+        Variables:
+          # Make table name accessible as environment variable from function code during execution
+          SAMPLE_TABLE: ''
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            Path: /
+            Method: POST
+
+  #STATE MACHINE RESOURCES
+  TextExtractionStateMachine:
+    Type: AWS::Serverless::StateMachine # More info about State Machine Resource: https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/sam-resource-statemachine.html
+    Properties:
+      DefinitionUri: services/statemachine/text_extraction.asl.json
+      DefinitionSubstitutions:
+        FileTypeFunctionArn: !GetAtt FileTypeFunction.Arn
+        PDFConverterFunctionArn: !GetAtt PDFConverterFunction.Arn
+        TextExtractionFunctionArn: !GetAtt TextExtractionFunction.Arn
+        FileUpdaterFunctionArn: !GetAtt FileUpdaterFunction.Arn
+      Events:
+        MainS3Event:
+          Type: EventBridgeRule #https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/sam-property-statemachine-statemachineeventsource.html
+          Properties:
+            # Description: Run state machine when new file is placed in target S3 bucket.
+            Pattern:
+              source:
+                - "aws.s3"
+              detail:
+                eventSource:
+                  - s3.amazonaws.com
+                eventName:
+                  - PutObject
+                requestParameters:
+                  bucketName:
+                    - !Ref MainDocumentBucket
+      Policies: # SAM policy templates: https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/serverless-policy-templates.html
+        - LambdaInvokePolicy:
+            FunctionName: !Ref FileTypeFunction
+        - LambdaInvokePolicy:
+            FunctionName: !Ref PDFConverterFunction
+        - LambdaInvokePolicy:
+            FunctionName: !Ref TextExtractionFunction
+        - LambdaInvokePolicy:
+            FunctionName: !Ref FileUpdaterFunction     
+
+  FileTypeFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: services/functions/file_checker/
+      Handler: app.lambda_handler
+      Runtime: python3.8
+
+  PDFConverterFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: services/functions/pdf_converter/
+      Handler: app.lambda_handler
+      Runtime: python3.8
+      Layers:
+        - Ref: TextExtractionPopplerLayer
+
+  TextExtractionFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: services/functions/text_extractor/
+      Handler: app.lambda_handler
+      Runtime: python3.8
+      Layers:
+        - Ref: TextExtractionTesseractLayer
+
+  FileUpdaterFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: services/functions/file_updater/
+      Handler: app.lambda_handler
+      Runtime: python3.8
+
+  TextExtractionPopplerLayer:
+    Type: AWS::Serverless::LayerVersion
+    Properties:
+      LayerName: text-extraction-poppler
+      Description: Poppler libraries with dependencies
+      ContentUri: services/layers/textextraction/poppler/layer.zip
+      CompatibleRuntimes:
+        - python3.8
+        - provided.al2
+
+  TextExtractionTesseractLayer:
+    Type: AWS::Serverless::LayerVersion
+    Properties:
+      LayerName: text-extraction-tesseract
+      Description: Tesseract and Open CV libraries with dependencies
+      ContentUri: services/layers/textextraction/tesseract/layer.zip
+      CompatibleRuntimes:
+        - python3.8
+        - provided.al2
+
+  LogMainDocumentBucketPutEvent:
+    DependsOn: 
+      - MainDocumentBucketLogPolicy
+    Type: AWS::CloudTrail::Trail
+    Properties:
+      IsLogging: true
+      S3BucketName: !Ref MainDocumentBucketLogging
+      EventSelectors:
+        - DataResources:
+            - Type: AWS::S3::Object
+              Values:
+                - !Sub arn:aws:s3:::${MainDocumentBucket}/
+
+  MainDocumentBucket:
+    Type: AWS::S3::Bucket
+
+  MainDocumentBucketLogging:
+    Type: AWS::S3::Bucket
+  
+  MainDocumentBucketLogPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties: 
+      Bucket: 
+        Ref: MainDocumentBucketLogging
+      PolicyDocument: 
+        Version: "2012-10-17"
+        Statement: 
+          - 
+            Sid: "AWSCloudTrailAclCheck"
+            Effect: "Allow"
+            Principal: 
+              Service: "cloudtrail.amazonaws.com"
+            Action: "s3:GetBucketAcl"
+            Resource: 
+              !Sub |-
+                arn:aws:s3:::${MainDocumentBucketLogging}
+          - 
+            Sid: "AWSCloudTrailWrite"
+            Effect: "Allow"
+            Principal: 
+              Service: "cloudtrail.amazonaws.com"
+            Action: "s3:PutObject"
+            Resource:
+              !Sub |-
+                arn:aws:s3:::${MainDocumentBucketLogging}/AWSLogs/${AWS::AccountId}/*
+            Condition: 
+              StringEquals:
+                s3:x-amz-acl: "bucket-owner-full-control"    
+
+Outputs:
+  #API RESOURCES
+  WebEndpoint:
+    Description: "API Gateway endpoint URL for Prod stage"
+    Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/"
+
+  # STATE MACHINE RESOURCES
+  TextExtractionStateMachineArn:
+    Description: "Text extraction state machine ARN"
+    Value: !Ref TextExtractionStateMachine
+  TextExtractionStateMachineRoleArn:
+    Description: "IAM Role created for text extraction state machine based on the specified SAM Policy Templates"
+    Value: !GetAtt TextExtractionStateMachineRole.Arn

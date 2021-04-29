@@ -1,0 +1,10 @@
+{
+    "version": "2.0.0",
+    "tasks": [{
+        "label": "Invoke GET Documents",
+        "command": "sam",
+        "args": ["local", "invoke", "-e", "./api/events/event-get-all-items.json", "--debug-port", "5858", "getDocumentsFunction", "--env-vars", "env.json"],
+        "type": "shell",
+        "isBackground": true
+    }]
+}
