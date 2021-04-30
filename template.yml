@@ -153,7 +153,7 @@ Resources:
       Handler: app.lambda_handler
       Runtime: python3.8
       Layers:
-        - Ref: TextExtractionTesseractLayer
+        - Ref: TextExtractionTessOpenCVLayer
 
   FileUpdaterFunction:
     Type: AWS::Serverless::Function
@@ -176,8 +176,18 @@ Resources:
     Type: AWS::Serverless::LayerVersion
     Properties:
       LayerName: text-extraction-tesseract
-      Description: Tesseract and Open CV libraries with dependencies
+      Description: Tesseract library with dependencies
       ContentUri: services/layers/textextraction/tesseract/layer.zip
+      CompatibleRuntimes:
+        - python3.8
+        - provided.al2
+
+  TextExtractionTessOpenCVLayer:
+    Type: AWS::Serverless::LayerVersion
+    Properties:
+      LayerName: text-extraction-tesseract-opencv
+      Description: Tesseract and Open CV libraries with dependencies
+      ContentUri: services/layers/textextraction/opencv/layer.zip
       CompatibleRuntimes:
         - python3.8
         - provided.al2

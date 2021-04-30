@@ -21,6 +21,9 @@ docker stop ${DOCKER_ID}
 docker rm -v ${DOCKER_ID}
 
 cd temp && cd package
+# Replace config-3.8 with config for AWS Lambda environment
+cp ../../aws-cv2-config-3.8.py ./python/lib/python3.8/site-packages/cv2/config-3.8.py
+
 zip -mrq ${START_DIR}/layer.zip ./*
 cd ${START_DIR}
 rm -rf ${START_DIR}/temp
