@@ -1,26 +1,35 @@
-# This is the SAM template that represents the architecture of your serverless application
-# https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/serverless-sam-template-basics.html
-
-# The AWSTemplateFormatVersion identifies the capabilities of the template
-# https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/format-version-structure.html
 AWSTemplateFormatVersion: 2010-09-09
 Description: >-
   Text extraction API, web client, and services.
 
-# Transform section specifies one or more macros that AWS CloudFormation uses to process your template
-# https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/transform-section-structure.html
 Transform:
 - AWS::Serverless-2016-10-31
 
-# Resources declares the AWS resources that you want to include in the stack
-# https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/resources-section-structure.html
-Resources:
-  #API MACHINE RESOURCES
-  # Each Lambda function is defined by properties:
-  # https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#awsserverlessfunction
+Parameters:
+  ParameterLogicalID:
+    Type: DataType
+    ParameterProperty: value
 
-  # This is a Lambda function config associated with the source code: get-all-items.js
-  getDocumentsFunction:
+Parameters:
+  ParameterTextExtractionDBResourceId:
+    Type: String
+  ParameterTextExtractionDBHost:
+    Type: String   
+  ParameterTextExtractionDBPort:
+    Type: Number
+  ParameterTextExtractionDBRegion:
+    Type: String
+  ParameterTextExtractionDBName:
+    Type: String
+  ParameterTextExtractionDBUsername:
+    Type: String
+  ParameterDefaultLogLevel:
+    Type: String
+    Default: INFO
+    
+Resources:
+  # API RESOURCES
+  GetDocumentsFunction:
     Type: AWS::Serverless::Function
     Properties:
       CodeUri: api/src
@@ -29,25 +38,40 @@ Resources:
       MemorySize: 128
       Timeout: 100
       Description: A simple example includes a HTTP get method to get all items from a DynamoDB table.
-      # Policies:
-        # Give Create/Read/Update/Delete Permissions to the SampleTable
-        # - DynamoDBCrudPolicy:
-        #     TableName: !Ref SampleTable
       Environment:
         Variables:
-          # Make table name accessible as environment variable from function code during execution
-          SAMPLE_TABLE: ''
+          LOG_LEVEL: !Ref ParameterDefaultLogLevel
+          TEXTEXTRACTION_HOST: !Ref ParameterTextExtractionDBHost
+          TEXTEXTRACTION_PORT: !Ref ParameterTextExtractionDBPort
+          TEXTEXTRACTION_REGION: !Ref ParameterTextExtractionDBRegion
+          TEXTEXTRACTION_DATABASE: !Ref ParameterTextExtractionDBName
+          TEXTEXTRACTION_USERNAME: !Ref ParameterTextExtractionDBUsername
+      Policies:
+        -
+          Version:  '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action: rds-db:connect
+              Resource: !Sub "arn:aws:rds-db:${AWS::Region}:${AWS::AccountId}:dbuser:${ParameterTextExtractionDBResourceId}/${ParameterTextExtractionDBUsername}"
+      VpcConfig:
+        SecurityGroupIds:
+          - sg-073682cf5309adfc0
+        SubnetIds:
+          - subnet-52eba079
+          - subnet-2a16c577
+          - subnet-dcb272a4
+          - subnet-e96a88a3              
       Events:
         Api:
           Type: Api
           Properties:
-            Path: /
+            Path: /documents/
             Method: GET
   # Each Lambda function is defined by properties:
   # https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#awsserverlessfunction
 
   # This is a Lambda function config associated with the source code: get-by-id.js
-  getDocumentByIdFunction:
+  GetDocumentByIdFunction:
     Type: AWS::Serverless::Function
     Properties:
       CodeUri: api/src
@@ -56,42 +80,81 @@ Resources:
       MemorySize: 128
       Timeout: 100
       Description: A simple example includes a HTTP get method to get one item by id from a DynamoDB table.
-      # Policies:
-      #   # Give Create/Read/Update/Delete Permissions to the SampleTable
-      #   - DynamoDBCrudPolicy:
-      #       TableName: !Ref SampleTable
       Environment:
         Variables:
-          # Make table name accessible as environment variable from function code during execution
-          SAMPLE_TABLE: ''
+          LOG_LEVEL: !Ref ParameterDefaultLogLevel
+          TEXTEXTRACTION_HOST: !Ref ParameterTextExtractionDBHost
+          TEXTEXTRACTION_PORT: !Ref ParameterTextExtractionDBPort
+          TEXTEXTRACTION_REGION: !Ref ParameterTextExtractionDBRegion
+          TEXTEXTRACTION_DATABASE: !Ref ParameterTextExtractionDBName
+          TEXTEXTRACTION_USERNAME: !Ref ParameterTextExtractionDBUsername
+      Policies:
+        - S3CrudPolicy:
+            BucketName: !Ref MainDocumentBucket
+        -
+          Version:  '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action: rds-db:connect
+              Resource: !Sub "arn:aws:rds-db:${AWS::Region}:${AWS::AccountId}:dbuser:${ParameterTextExtractionDBResourceId}/${ParameterTextExtractionDBUsername}"          
+      VpcConfig:
+        SecurityGroupIds:
+          - sg-073682cf5309adfc0
+        SubnetIds:
+          - subnet-52eba079
+          - subnet-2a16c577
+          - subnet-dcb272a4
+          - subnet-e96a88a3              
       Events:
         Api:
           Type: Api
           Properties:
-            Path: /{id}
+            Path: /documents/{id}
             Method: GET
   # Each Lambda function is defined by properties:
   # https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#awsserverlessfunction
 
-  # This is a Lambda function config associated with the source code: put-item.js
-  putDocumentFunction:
+  PostDocumentFunction:
     Type: AWS::Serverless::Function
     Properties:
       CodeUri: api/src
-      Handler: handlers/put-document.putItemHandler
+      Handler: handlers/post-document.postItemHandler
       Runtime: nodejs14.x
       MemorySize: 128
       Timeout: 100
       Description: Uploads a document to the documents workstream.
       Environment:
         Variables:
-          # Make table name accessible as environment variable from function code during execution
-          SAMPLE_TABLE: ''
+          DOCUMENT_BUCKET: !Ref MainDocumentBucket
+          UPLOAD_EXPIRATION_SECONDS: 300
+          LOG_LEVEL: !Ref ParameterDefaultLogLevel
+          TEXTEXTRACTION_HOST: !Ref ParameterTextExtractionDBHost
+          TEXTEXTRACTION_PORT: !Ref ParameterTextExtractionDBPort
+          TEXTEXTRACTION_REGION: !Ref ParameterTextExtractionDBRegion
+          TEXTEXTRACTION_DATABASE: !Ref ParameterTextExtractionDBName
+          TEXTEXTRACTION_USERNAME: !Ref ParameterTextExtractionDBUsername
+      Policies:
+        - S3CrudPolicy:
+            BucketName: !Ref MainDocumentBucket        
+        -
+          Version:  '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action: rds-db:connect
+              Resource: !Sub "arn:aws:rds-db:${AWS::Region}:${AWS::AccountId}:dbuser:${ParameterTextExtractionDBResourceId}/${ParameterTextExtractionDBUsername}"
+      VpcConfig:
+        SecurityGroupIds:
+          - sg-073682cf5309adfc0
+        SubnetIds:
+          - subnet-52eba079
+          - subnet-2a16c577
+          - subnet-dcb272a4
+          - subnet-e96a88a3              
       Events:
         Api:
           Type: Api
           Properties:
-            Path: /
+            Path: /documents/
             Method: POST
 
   #STATE MACHINE RESOURCES
@@ -136,15 +199,42 @@ Resources:
       CodeUri: services/functions/file_checker/
       Handler: app.lambda_handler
       Runtime: python3.8
-
+      Timeout: 60
+      MemorySize: 128
+      Layers:
+        - Ref: TextExtractionPopplerLayer
+      Environment:
+        Variables:
+          DOCUMENT_BUCKET: !Ref MainDocumentBucket
+          PROCESSED_BUCKET: !Ref ProcessedDocumentBucket
+          LOG_LEVEL: !Ref ParameterDefaultLogLevel
+      Policies:
+        - S3ReadPolicy:
+            BucketName: !Ref MainDocumentBucket
+        
+                    
   PDFConverterFunction:
     Type: AWS::Serverless::Function
     Properties:
       CodeUri: services/functions/pdf_converter/
       Handler: app.lambda_handler
       Runtime: python3.8
+      Timeout: 600
+      MemorySize: 1769 # 1 vCPU
       Layers:
         - Ref: TextExtractionPopplerLayer
+        - Ref: TextExtractionLibLayer
+      Environment:
+        Variables:
+          DOCUMENT_BUCKET: !Ref MainDocumentBucket
+          PROCESSED_BUCKET: !Ref ProcessedDocumentBucket
+          FONTCONFIG_PATH: /var/task/fonts
+          LOG_LEVEL: !Ref ParameterDefaultLogLevel
+      Policies:
+        - S3ReadPolicy:
+            BucketName: !Ref MainDocumentBucket
+        - S3WritePolicy:
+            BucketName: !Ref ProcessedDocumentBucket        
 
   TextExtractionFunction:
     Type: AWS::Serverless::Function
@@ -152,8 +242,22 @@ Resources:
       CodeUri: services/functions/text_extractor/
       Handler: app.lambda_handler
       Runtime: python3.8
+      Timeout: 600
+      MemorySize: 1769 # 1 vCPU
       Layers:
         - Ref: TextExtractionTessOpenCVLayer
+        - Ref: TextExtractionTessDataEngLayer        
+        - Ref: TextExtractionLibLayer
+      Environment:
+        Variables:
+          DOCUMENT_BUCKET: !Ref MainDocumentBucket
+          PROCESSED_BUCKET: !Ref ProcessedDocumentBucket
+          LOG_LEVEL: !Ref ParameterDefaultLogLevel
+      Policies:
+        - S3ReadPolicy:
+            BucketName: !Ref MainDocumentBucket        
+        - S3CrudPolicy:
+            BucketName: !Ref ProcessedDocumentBucket
 
   FileUpdaterFunction:
     Type: AWS::Serverless::Function
@@ -161,6 +265,36 @@ Resources:
       CodeUri: services/functions/file_updater/
       Handler: app.lambda_handler
       Runtime: python3.8
+      Timeout: 30
+      MemorySize: 128 # 1 vCPU
+      Layers:
+        - Ref: TextExtractionTessOpenCVLayer
+        - Ref: TextExtractionTessDataEngLayer
+      Environment:
+        Variables:
+          DOCUMENT_BUCKET: !Ref MainDocumentBucket
+          PROCESSED_BUCKET: !Ref ProcessedDocumentBucket
+          LOG_LEVEL: !Ref ParameterDefaultLogLevel
+          TEXTEXTRACTION_HOST: !Ref ParameterTextExtractionDBHost
+          TEXTEXTRACTION_PORT: !Ref ParameterTextExtractionDBPort
+          TEXTEXTRACTION_REGION: !Ref ParameterTextExtractionDBRegion
+          TEXTEXTRACTION_DATABASE: !Ref ParameterTextExtractionDBName
+          TEXTEXTRACTION_USERNAME: !Ref ParameterTextExtractionDBUsername
+      Policies:
+        -
+          Version:  '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action: rds-db:connect
+              Resource: !Sub "arn:aws:rds-db:${AWS::Region}:${AWS::AccountId}:dbuser:${ParameterTextExtractionDBResourceId}/${ParameterTextExtractionDBUsername}"
+      VpcConfig:
+        SecurityGroupIds:
+          - sg-073682cf5309adfc0
+        SubnetIds:
+          - subnet-52eba079
+          - subnet-2a16c577
+          - subnet-dcb272a4
+          - subnet-e96a88a3
 
   TextExtractionPopplerLayer:
     Type: AWS::Serverless::LayerVersion
@@ -182,6 +316,16 @@ Resources:
         - python3.8
         - provided.al2
 
+  TextExtractionTessDataEngLayer:
+    Type: AWS::Serverless::LayerVersion
+    Properties:
+      LayerName: text-extraction-tessdata-eng
+      Description: English tessdata
+      ContentUri: services/layers/textextraction/tessdata-eng/layer.zip
+      CompatibleRuntimes:
+        - python3.8
+        - provided.al2
+
   TextExtractionTessOpenCVLayer:
     Type: AWS::Serverless::LayerVersion
     Properties:
@@ -191,6 +335,15 @@ Resources:
       CompatibleRuntimes:
         - python3.8
         - provided.al2
+
+  TextExtractionLibLayer:
+    Type: AWS::Serverless::LayerVersion
+    Properties:
+      LayerName: text-extraction-lib
+      Description: Text extraction common library
+      ContentUri: services/libs/
+      CompatibleRuntimes:
+        - python3.8
 
   LogMainDocumentBucketPutEvent:
     DependsOn: 
@@ -208,9 +361,12 @@ Resources:
   MainDocumentBucket:
     Type: AWS::S3::Bucket
 
+  ProcessedDocumentBucket:
+    Type: AWS::S3::Bucket
+
   MainDocumentBucketLogging:
     Type: AWS::S3::Bucket
-  
+
   MainDocumentBucketLogPolicy:
     Type: AWS::S3::BucketPolicy
     Properties: 
@@ -239,7 +395,7 @@ Resources:
                 arn:aws:s3:::${MainDocumentBucketLogging}/AWSLogs/${AWS::AccountId}/*
             Condition: 
               StringEquals:
-                s3:x-amz-acl: "bucket-owner-full-control"    
+                s3:x-amz-acl: "bucket-owner-full-control"
 
 Outputs:
   #API RESOURCES

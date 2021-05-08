@@ -8,13 +8,3 @@ s3_prefix = "text-extraction"
 region = "us-west-2"
 confirm_changeset = true
 capabilities = "CAPABILITY_IAM"
-
-["env.json"]
-["env.json".deploy]
-["env.json".deploy.parameters]
-stack_name = "text-extraction"
-s3_bucket = "aws-sam-cli-managed-default-samclisourcebucket-18nvbflyopk0k"
-s3_prefix = "text-extraction"
-region = "us-west-2"
-confirm_changeset = true
-capabilities = "CAPABILITY_IAM"

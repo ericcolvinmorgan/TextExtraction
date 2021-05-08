@@ -1,4 +1,5 @@
 .aws-sam
+samconfig.toml
 node_modules
 services/layers/textextraction/*/dependencies
 services/layers/textextraction/*/output.txt
@@ -246,3 +247,6 @@ $RECYCLE.BIN/
 
 # End of https://www.gitignore.io/api/osx,linux,python,windows,pycharm,visualstudiocode
 services/layers/textextraction/poppler/bin/tiffinfo
+
+.env.dev
+services/functions/test_documents/*

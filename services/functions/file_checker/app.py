@@ -1,6 +1,13 @@
+import boto3
+import botocore
 import logging
+import os
+import poppler
+import sys
+from PIL import Image
+from io import BytesIO
+
 logger = logging.getLogger()
-logger.setLevel(logging.INFO)
 
 def lambda_handler(event, context):
     """ Lambda function which determines the type of an input file.
@@ -17,5 +24,41 @@ def lambda_handler(event, context):
     ------
         dict: Object containing the document_id and associated type.
     """
+    logger.setLevel(logging.getLevelName(os.getenv('LOG_LEVEL')))
     logger.info(event)
-    return {"document_id": 0, "file_type": "PDF"}
+    file_type = "Invalid"
+
+    try:
+        s3 = boto3.client('s3')
+        fileBlob = BytesIO(s3.get_object(Bucket=event['detail']['requestParameters']['bucketName'], Key=event['detail']['requestParameters']['key'])['Body'].read())
+
+        try:
+            image=Image.open(fileBlob)
+            logger.info("Image file found")
+            file_type = "Image"
+        except IOError:
+            #Attempt PDF Open
+            fileBlob.seek(0)
+            pdf = poppler.load_from_data(fileBlob.read())
+
+            if pdf.pages > 0:
+                logger.info("PDF file found")
+                file_type = "PDF"
+    
+    except botocore.exceptions.ClientError as error:
+        raise error
+
+    except:
+        e = sys.exc_info()
+        logger.debug(e)
+        logger.info("File type could not be determined.")
+
+    return file_type
+
+if __name__ == "__main__":
+    # event = {"detail": {"requestParameters": {"bucketName": "text-extraction-maindocumentbucket-a8qgfmjqltvw", "key": "f5471-5.tif"}}}
+    # event = {"detail": {"requestParameters": {"bucketName": "text-extraction-maindocumentbucket-a8qgfmjqltvw", "key": "f5471.pdf"}}}
+    event = {"detail": {"requestParameters": {"bucketName": "text-extraction-maindocumentbucket-a8qgfmjqltvw", "key": "f5471output.box"}}}
+    # event = {"detail": {"requestParameters": {"bucketName": "text-extraction-maindocumentbucket-a8qgfmjqltvw", "key": "invalid"}}}
+    output = lambda_handler(event, [])
+    print(output)

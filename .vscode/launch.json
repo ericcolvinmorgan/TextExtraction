@@ -2,12 +2,19 @@
     "version": "0.2.0",
     "configurations": [
         {
+            "name": "Python: Current File",
+            "type": "python",
+            "request": "launch",
+            "program": "${file}",
+            "cwd": "${fileDirname}",        
+            "console": "integratedTerminal",
+        },
+        {
             "name": "Attach to SAM CLI",
             "type": "node",
             "request": "attach",
             "address": "localhost",
             "port": 5858,
-            // From the sam init example, it would be "${workspaceRoot}/hello-world"
             // "localRoot": "${workspaceRoot}/{directory of node app}",
             "localRoot": "${workspaceRoot}",
             "remoteRoot": "/var/task",

@@ -7,15 +7,20 @@
             "Resource": "${FileTypeFunctionArn}",
             "Retry": [
                 {
-                    "ErrorEquals": [
+                    "ErrorEquals": [    
                         "States.TaskFailed"
                     ],
                     "IntervalSeconds": 15,
-                    "MaxAttempts": 5,
-                    "BackoffRate": 1.5
+                    "MaxAttempts": 3
                 }
             ],
-            "Next": "PDF, Image, or Invalid?"
+            "Catch": [ {
+                    "ErrorEquals": [ "States.ALL" ],
+                    "ResultPath": "$.error-info",
+                    "Next": "Update File"
+             } ],
+             "ResultPath": "$.file_type",
+             "Next": "PDF, Image, or Invalid?"
         },
         "PDF, Image, or Invalid?": {
             "Type": "Choice",
@@ -23,17 +28,17 @@
                 {
                     "Variable": "$.file_type",
                     "StringEquals": "PDF",
-                    "Next": "Convert PDF To Image"
+                    "Next": "Process PDF"
                 },
                 {
                     "Variable": "$.file_type",
                     "StringEquals": "Image",
-                    "Next": "Extract Text"
+                    "Next": "Process Images"
                 }
             ],
             "Default": "Update File"
         },
-        "Convert PDF To Image": {
+        "Process PDF": {
             "Type": "Task",
             "Resource": "${PDFConverterFunctionArn}",
             "Retry": [
@@ -41,15 +46,19 @@
                     "ErrorEquals": [
                         "States.TaskFailed"
                     ],
-                    "IntervalSeconds": 2,
-                    "MaxAttempts": 3,
-                    "BackoffRate": 1
+                    "IntervalSeconds": 15,
+                    "MaxAttempts": 3
                 }
             ],
-            "ResultPath": "$.images",
-            "Next": "Extract Text"
+            "Catch": [ {
+                    "ErrorEquals": [ "States.ALL" ],
+                    "ResultPath": "$.error-info",
+                    "Next": "Update File"
+             } ],
+            "ResultPath": "$",
+            "Next": "Process Images"
         },
-        "Extract Text": {
+        "Process Images": {
             "Type": "Task",
             "Resource": "${TextExtractionFunctionArn}",
             "Retry": [
@@ -57,12 +66,16 @@
                     "ErrorEquals": [
                         "States.TaskFailed"
                     ],
-                    "IntervalSeconds": 2,
-                    "MaxAttempts": 3,
-                    "BackoffRate": 1
+                    "IntervalSeconds": 15,
+                    "MaxAttempts": 3
                 }
             ],
-            "ResultPath": "$.text_output",
+            "Catch": [ {
+                    "ErrorEquals": [ "States.ALL" ],
+                    "ResultPath": "$.error-info",
+                    "Next": "Update File"
+             } ],
+            "ResultPath": "$",
             "Next": "Update File"
         },
         "Update File": {
@@ -73,9 +86,8 @@
                     "ErrorEquals": [
                         "States.TaskFailed"
                     ],
-                    "IntervalSeconds": 20,
-                    "MaxAttempts": 5,
-                    "BackoffRate": 10
+                    "IntervalSeconds": 15,
+                    "MaxAttempts": 3
                 }
             ],
             "End": true

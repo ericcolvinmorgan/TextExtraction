@@ -33,7 +33,7 @@ const ManageForms: FunctionComponent = () => {
             key: 'newDocument',
             text: 'New',
             iconProps: { iconName: 'Add' },
-            // onClick: () => useIsOpen(true)
+            onClick: () => setIsOpen(true)
         },
         {
             key: 'importDocuments',

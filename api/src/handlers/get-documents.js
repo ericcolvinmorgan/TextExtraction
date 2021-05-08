@@ -1,9 +1,6 @@
 const AWS = require('aws-sdk');
 const { Client } = require('pg');
 
-// Get the DynamoDB table name from environment variables
-const tableName = process.env.SAMPLE_TABLE;
-
 /**
  * A simple example includes a HTTP get method to get all items from a DynamoDB table.
  */
@@ -16,42 +13,30 @@ exports.getDocumentsHandler = async (event) => {
 
     var signer = new AWS.RDS.Signer({
         // configure options
-        region: 'us-west-2',
-        username: 'formgenerator-api-dbuser',
-        hostname: 'form-extraction-dev.c9fpowuwlcrw.us-west-2.rds.amazonaws.com',
-        port: 5432
+        region: process.env.TEXTEXTRACTION_REGION,
+        username: process.env.TEXTEXTRACTION_USERNAME,
+        hostname: process.env.TEXTEXTRACTION_HOST,
+        port: parseInt(process.env.TEXTEXTRACTION_PORT)
     });
-    var token = signer.getAuthToken({
-        // these options are merged with those defined when creating the signer, overriding in the case of a duplicate option
-        // credentials are not specified here or when creating the signer, so default credential provider will be used
-        username: 'formgeneratorapidbuser' // overriding username
-    });
+
+    var token = signer.getAuthToken();
 
     const client = new Client({
-        user: 'formgeneratorapidbuser',
-        host: 'form-extraction-dev.c9fpowuwlcrw.us-west-2.rds.amazonaws.com',
-        database: 'postgres',
+        user: process.env.TEXTEXTRACTION_USERNAME,
+        host: process.env.TEXTEXTRACTION_HOST,
+        database: process.env.TEXTEXTRACTION_DATABASE,
         password: token,
-        port: 5432,
-        ssl: { rejectUnauthorized: false }
-        
-    })
+        port: parseInt(process.env.TEXTEXTRACTION_PORT),
+        ssl: { rejectUnauthorized: false }        
+    });
 
     await client.connect()
-    const res = await client.query('SELECT $1::text as message, $1::text as itemname', ['Hello world!'])
-    console.log(res.rows[0]) // Hello world!
+    const res = await client.query('SELECT document_id, name, added_date, added_by, size, status_id, type_id FROM public.documents;')
     await client.end()
-
-    // get all items from the table (only first 1MB data, you can use `LastEvaluatedKey` to get the rest of data)
-    // https://docs.aws.amazon.com/AWSJavaScriptSDK/latest/AWS/DynamoDB/DocumentClient.html#scan-property
-    // https://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_Scan.html
-    var params = {
-        TableName: tableName
-    };
 
     const response = {
         statusCode: 200,
-        body: JSON.stringify(params)
+        body: JSON.stringify(res.rows)
     };
 
     // All log statements are written to CloudWatch

@@ -1,7 +1,7 @@
 FROM textextraction-poppler:latest
 
 ENV PACKAGE_DIRECTORY=/opt/package
-COPY app.py __init__.py /var/task/
+COPY . /var/task/
 RUN cp /opt/lib64/libpoppler-cpp.so.0 /var/task/
 RUN cp -r ${PACKAGE_DIRECTORY}/* /var/task/
 
