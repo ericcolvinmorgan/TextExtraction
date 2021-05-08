@@ -1,6 +1,6 @@
 .aws-sam
-samconfig.toml
 node_modules
+samconfig.toml
 services/layers/textextraction/*/dependencies
 services/layers/textextraction/*/output.txt
 # Created by https://www.gitignore.io/api/osx,linux,python,windows,pycharm,visualstudiocode
