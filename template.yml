@@ -67,10 +67,7 @@ Resources:
           Properties:
             Path: /documents/
             Method: GET
-  # Each Lambda function is defined by properties:
-  # https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#awsserverlessfunction
 
-  # This is a Lambda function config associated with the source code: get-by-id.js
   GetDocumentByIdFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -82,6 +79,8 @@ Resources:
       Description: A simple example includes a HTTP get method to get one item by id from a DynamoDB table.
       Environment:
         Variables:
+          DOCUMENT_BUCKET: !Ref MainDocumentBucket
+          PROCESSED_BUCKET: !Ref ProcessedDocumentBucket
           LOG_LEVEL: !Ref ParameterDefaultLogLevel
           TEXTEXTRACTION_HOST: !Ref ParameterTextExtractionDBHost
           TEXTEXTRACTION_PORT: !Ref ParameterTextExtractionDBPort
@@ -89,8 +88,10 @@ Resources:
           TEXTEXTRACTION_DATABASE: !Ref ParameterTextExtractionDBName
           TEXTEXTRACTION_USERNAME: !Ref ParameterTextExtractionDBUsername
       Policies:
-        - S3CrudPolicy:
+        - S3ReadPolicy:
             BucketName: !Ref MainDocumentBucket
+        - S3ReadPolicy:
+            BucketName: !Ref ProcessedDocumentBucket            
         -
           Version:  '2012-10-17'
           Statement:
@@ -111,8 +112,45 @@ Resources:
           Properties:
             Path: /documents/{id}
             Method: GET
-  # Each Lambda function is defined by properties:
-  # https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#awsserverlessfunction
+
+  DeleteDocumentByIdFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: api/src
+      Handler: handlers/delete-document-by-id.deleteByIdHandler
+      Runtime: nodejs14.x
+      MemorySize: 128
+      Timeout: 100
+      Description: Mark document item as deleted.
+      Environment:
+        Variables:
+          LOG_LEVEL: !Ref ParameterDefaultLogLevel
+          TEXTEXTRACTION_HOST: !Ref ParameterTextExtractionDBHost
+          TEXTEXTRACTION_PORT: !Ref ParameterTextExtractionDBPort
+          TEXTEXTRACTION_REGION: !Ref ParameterTextExtractionDBRegion
+          TEXTEXTRACTION_DATABASE: !Ref ParameterTextExtractionDBName
+          TEXTEXTRACTION_USERNAME: !Ref ParameterTextExtractionDBUsername
+      Policies:
+        -
+          Version:  '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action: rds-db:connect
+              Resource: !Sub "arn:aws:rds-db:${AWS::Region}:${AWS::AccountId}:dbuser:${ParameterTextExtractionDBResourceId}/${ParameterTextExtractionDBUsername}"          
+      VpcConfig:
+        SecurityGroupIds:
+          - sg-073682cf5309adfc0
+        SubnetIds:
+          - subnet-52eba079
+          - subnet-2a16c577
+          - subnet-dcb272a4
+          - subnet-e96a88a3              
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            Path: /documents/{id}
+            Method: DELETE
 
   PostDocumentFunction:
     Type: AWS::Serverless::Function
@@ -396,6 +434,66 @@ Resources:
             Condition: 
               StringEquals:
                 s3:x-amz-acl: "bucket-owner-full-control"
+  
+  # WEB CLIENT RESOURCES
+  CloudFrontOriginAccessIdentity:
+    Type: 'AWS::CloudFront::CloudFrontOriginAccessIdentity'
+    Properties:
+      CloudFrontOriginAccessIdentityConfig:
+        Comment: 'Serverless website OA'
+
+  CloudfrontDistribution:
+    Type: "AWS::CloudFront::Distribution"
+    Properties:
+      DistributionConfig:
+        Comment: "Cloudfront distribution for text extraction web client"
+        DefaultRootObject: "index.html"
+        Enabled: true
+        HttpVersion: http2
+        Origins:
+          - Id: textextraction-webclient
+            DomainName: !GetAtt WebClientBucket.RegionalDomainName
+            S3OriginConfig:
+              # Access bucket through an origin access identity
+              OriginAccessIdentity: 
+                Fn::Sub: 'origin-access-identity/cloudfront/${CloudFrontOriginAccessIdentity}'
+        DefaultCacheBehavior: # Deprecated - Need to define cache policy instead.
+          Compress: 'true'
+          AllowedMethods:
+            - GET
+            - HEAD
+            - OPTIONS
+          TargetOriginId: textextraction-webclient
+          ForwardedValues:
+            QueryString: true
+          ViewerProtocolPolicy : redirect-to-https
+        CustomErrorResponses:
+        - ErrorCode: '403'
+          ResponsePagePath: "/index.html"
+          ResponseCode: '200'
+          ErrorCachingMinTTL: '30'
+
+  WebClientBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: textextractionwebclient
+      WebsiteConfiguration:
+        IndexDocument: index.html
+        ErrorDocument: index.html
+
+  WebClientBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref WebClientBucket
+      PolicyDocument:
+        Statement:
+          -
+            Effect: Allow
+            Action: 's3:GetObject'
+            Resource:
+              - !Sub "arn:aws:s3:::${WebClientBucket}/*"
+            Principal:
+              AWS: !Sub "arn:aws:iam::cloudfront:user/CloudFront Origin Access Identity ${CloudFrontOriginAccessIdentity}"
 
 Outputs:
   #API RESOURCES

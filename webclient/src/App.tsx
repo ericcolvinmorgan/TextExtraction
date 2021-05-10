@@ -81,6 +81,7 @@ const App = () => {
             gap={15}
           >
             <Route path="/" exact component={Home} />
+            <Route path="/index.html" exact component={Home} />
             <Route path="/manageforms" component={ManageForms} />
             <Route path="/managetemplates" component={ManageTemplates} />
           </Stack>

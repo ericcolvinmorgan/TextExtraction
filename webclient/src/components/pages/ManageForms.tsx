@@ -1,19 +1,73 @@
+// TODO - Need to lift update documents state and remove page refreshes, those are currently implemented for testing only.
+
 import { Breadcrumb, IBreadcrumbItem } from '@fluentui/react/lib/components/Breadcrumb';
 import { CommandBar, ICommandBarItemProps } from '@fluentui/react/lib/components/CommandBar';
 import { IStackStyles, Stack } from '@fluentui/react/lib/components/Stack';
-import { FunctionComponent, useState } from 'react';
+import { Modal } from '@fluentui/react/lib/components/Modal';
+import React, { FunctionComponent, useState } from 'react';
 import DocumentsPanel from '../tables/DocumentsTable';
 import UploadDocumentPanel from '../panels/UploadDocumentPanel';
 import { Text } from '@fluentui/react';
-
+import { IconButton } from '@fluentui/react/lib/Button';
+import { IButtonStyles } from '@fluentui/react/lib/Button';
+import { FontWeights } from '@fluentui/react/lib/Styling';
+import { useTheme } from '@fluentui/react/lib/Theme';
+import { useBoolean } from '@fluentui/react-hooks';
+import { mergeStyleSets } from '@fluentui/react/lib/Styling';
+import { TextField } from '@fluentui/react/lib/TextField';
 
 const ManageForms: FunctionComponent = () => {
     const [isOpen, setIsOpen] = useState(false);
+    const [isModalOpen, { setTrue: showModal, setFalse: hideModal }] = useBoolean(false);
+    const theme = useTheme();
+
+    const contentStyles = mergeStyleSets({
+        container: {
+            display: 'flex',
+            flexFlow: 'column nowrap',
+            alignItems: 'stretch',
+        },
+        header: [
+            theme.fonts.xLargePlus,
+            {
+                flex: '1 1 auto',
+                borderTop: `4px solid ${theme.palette.themePrimary}`,
+                color: theme.palette.neutralPrimary,
+                display: 'flex',
+                alignItems: 'center',
+                fontWeight: FontWeights.semibold,
+                padding: '12px 12px 14px 24px',
+            },
+        ],
+        body: {
+            flex: '4 4 auto',
+            padding: '0 24px 24px 24px',
+            overflowY: 'hidden',
+            selectors: {
+                p: { margin: '14px 0' },
+                'p:first-child': { marginTop: 0 },
+                'p:last-child': { marginBottom: 0 },
+            },
+        },
+    });
+    
+    const iconButtonStyles: Partial<IButtonStyles> = {
+        root: {
+            color: theme.palette.neutralPrimary,
+            marginLeft: 'auto',
+            marginTop: '4px',
+            marginRight: '2px',
+        },
+        rootHovered: {
+            color: theme.palette.neutralDark,
+        },
+    };
 
     const stackStyles: IStackStyles = {
         root: {
             margin: '0 auto',
-            width: `1200px`
+            width: `1200px`,
+            marginBottom:'50px'
         }
     };
 
@@ -39,9 +93,15 @@ const ManageForms: FunctionComponent = () => {
             key: 'importDocuments',
             text: 'Extract Wikipedia PDFs/Images',
             iconProps: { iconName: 'Import' },
-            // onClick: () => useIsOpen(true)
+            onClick: showModal
         },
-    ];
+        {
+            key: 'refreshDocuments',
+            text: 'Refresh',
+            iconProps: { iconName: 'Refresh' },
+            onClick: () => window.location.reload()
+        },
+    ];    
 
     return (
         <div>
@@ -86,9 +146,29 @@ const ManageForms: FunctionComponent = () => {
                 />
 
                 <DocumentsPanel></DocumentsPanel>
-
             </Stack>
             <UploadDocumentPanel isOpen={isOpen} setIsOpen={setIsOpen}></UploadDocumentPanel>
+
+            <Modal
+                isOpen={isModalOpen}
+                onDismiss={hideModal}
+                isBlocking={false}
+                containerClassName={contentStyles.container}
+            >
+                <div className={contentStyles.header}>
+                    <span>Extract Wikipedia Documents</span>
+                    <IconButton
+                        styles={iconButtonStyles}
+                        iconProps={{ iconName: 'Cancel' }}
+                        ariaLabel="Close popup modal"
+                        onClick={hideModal}
+                    />
+                </div>
+                <div className={contentStyles.body}>
+                    <Text>Enter the address to the Wikipedia article from which to extract PDF references</Text>
+                    <TextField label="Set Location" iconProps={{ iconName: 'Download' }} onClick={() => { console.log('Select Location') }} required />
+                </div>
+            </Modal>
         </div>
     );
 }

@@ -1,7 +1,9 @@
+// TODO - Need to connect documents state, remove refresh.
+
 import { DefaultButton, PrimaryButton } from '@fluentui/react/lib/components/Button';
 import { Panel } from '@fluentui/react/lib/components/Panel';
 import { TextField } from '@fluentui/react/lib/components/TextField';
-import React, { FC, useEffect } from 'react';
+import React, { FC } from 'react';
 import { useState } from 'react';
 import { IPanelProps } from './Interfaces';
 import { usePostDocument, useUploadDocument } from '../../api/documentsApi'
@@ -29,8 +31,8 @@ const UploadDocumentPanel: FC<IPanelProps> = (props) => {
 
     const handleUploadClick = React.useCallback(
         async () => {
-            if (saveFileForm.file == null || saveFileForm.fileName == '') {
-
+            if (saveFileForm.file == null || saveFileForm.fileName === '') {
+                // TODO - Add alerts
             }
             else {
                 const file: File = saveFileForm.file!;
@@ -41,6 +43,7 @@ const UploadDocumentPanel: FC<IPanelProps> = (props) => {
                 console.log(uploadDocument.response);
                 setSaveFileForm({ fileName: '', file: null });
                 setIsOpen(false);
+                window.location.reload();
             }
 
         }, [postDocument, saveFileForm, setIsOpen, uploadDocument]);

@@ -7,16 +7,18 @@ import { Persona } from '@fluentui/react/lib/components/Persona/Persona';
 import { TooltipHost } from '@fluentui/react/lib/components/Tooltip';
 import { FontWeights, mergeStyleSets } from '@fluentui/react/lib/Styling';
 import { useId, useBoolean } from '@fluentui/react-hooks';
-import React, { FunctionComponent } from 'react';
+import React, { FunctionComponent, useEffect, useState } from 'react';
 import { useTheme } from '@fluentui/react/lib/utilities/ThemeProvider';
 import { PersonaSize } from '@fluentui/react/lib/components/Persona';
-import { Dialog, DialogFooter, DialogType } from '@fluentui/react';
+import { Dialog, DialogFooter, DialogType, FontIcon } from '@fluentui/react';
+import { useDeleteDocumentById, useGetDocumentById, useGetDocuments } from '../../api/documentsApi';
 
 export interface IDocument {
     key: string;
     name: string;
     value: string;
     iconName: string;
+    fileStatus: number;
     fileType: string;
     modifiedBy: string;
     dateModified: string;
@@ -28,7 +30,111 @@ export interface IDocument {
 const DocumentsTable: FunctionComponent = () => {
     const [isModalOpen, { setTrue: showModal, setFalse: hideModal }] = useBoolean(false);
     const [isConfirmDeleteOpen, { setTrue: showConfirmDelete, setFalse: hideConfirmDelete }] = useBoolean(false);
+    const [items, updateItems] = useState([] as IDocument[]);
+    const [deleteItem, updateDeleteItem] = useState({} as IDocument);
+    const getDocuments = useGetDocuments(new URLSearchParams([['pageSize', '10']]));
+    const getDocumentById = useGetDocumentById('', new URLSearchParams([['getdocument', 'true']]));
+    const getOutputById = useGetDocumentById('', new URLSearchParams([['getoutput', 'true']]));
+    const deleteDocumentById = useDeleteDocumentById('', new URLSearchParams());
+
     const theme = useTheme();
+
+    useEffect(() => {
+        getDocuments.sendRequest({});
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [getDocuments.endpoint]);
+
+    useEffect(() => {
+        const updatedItems: IDocument[] = [];
+
+        for (var i = 0; i < getDocuments.response.length; i++) {
+            const fileDate = new Date(getDocuments.response[i].added_date);
+
+            let fileType = 'Unknown';
+            let fileIcon = 'Unknown';
+
+            switch (getDocuments.response[i].type_id) {
+                case -1:
+                    fileType = 'Invalid';
+                    fileIcon = '';
+                    break;
+
+                case 1:
+                    fileType = fileIcon = 'PDF';
+                    break;
+
+                case 2:
+                    fileType = 'Image';
+                    fileIcon = 'FileImage';
+                    break;
+            }
+
+            let fileName = getDocuments.response[i].name;
+            fileName = fileName.charAt(0).toUpperCase() + fileName.slice(1).concat(` - ${fileType}`);
+
+            let userName = "Test User";
+            userName = userName
+                .split(' ')
+                .map((name: string) => name.charAt(0).toUpperCase() + name.slice(1))
+                .join(' ');
+
+            userName = userName
+                .split(' ')
+                .map((name: string) => name.charAt(0).toUpperCase() + name.slice(1))
+                .join(' ');
+
+            updatedItems.push({
+                key: getDocuments.response[i].document_id,
+                name: fileName,
+                value: fileName,
+                iconName: fileIcon,
+                fileStatus: getDocuments.response[i].status_id,
+                fileType: fileType,
+                modifiedBy: userName,
+                dateModified: fileDate.toLocaleDateString(),
+                dateModifiedValue: fileDate.valueOf(),
+                fileSize: getDocuments.response[i].size.toString(),
+                fileSizeRaw: getDocuments.response[i].size,
+            });
+        }
+
+        updateItems(updatedItems);
+    }, [getDocuments.response]);
+
+    const promptToDelete = (item: any) => {
+        updateDeleteItem(item);
+        showConfirmDelete();
+    }
+
+    const confirmDelete = async () => {
+        await deleteDocumentById.sendRequest({}, `${process.env.REACT_APP_API_DOCUMENTS_ENDPOINT as string}/${deleteItem.key}`);
+        await getDocuments.sendRequest({});
+        hideConfirmDelete();
+    }
+
+    const getItemDocument = async (item: any) => {
+        const detail = await getDocumentById.sendRequest({}, `${process.env.REACT_APP_API_DOCUMENTS_ENDPOINT as string}/${item.key}`);
+        // const link = document.getElementById('downloadLink') as any;
+        // link.href = detail.document_url;
+        // link.click();
+        window.open(detail.document_url);
+        console.log(detail);
+        hideConfirmDelete();
+    }
+
+    const getItemOutput = async (item: any) => {
+        const detail = await getDocumentById.sendRequest({}, `${process.env.REACT_APP_API_DOCUMENTS_ENDPOINT as string}/${item.key}`);
+        const link = document.getElementById('downloadLink') as any;
+        link.href = detail.text_url;
+        link.click();
+        console.log(detail);
+        hideConfirmDelete();
+    }
+
+    const closeDelete = () => {
+        updateDeleteItem({} as IDocument);
+        hideConfirmDelete();
+    }
 
     const getKey = (item: any, index?: number): string => {
         return item.key;
@@ -133,7 +239,8 @@ const DocumentsTable: FunctionComponent = () => {
             onColumnClick: onColumnClick,
             onRender: (item: IDocument) => (
                 <TooltipHost content={`${item.fileType} file`}>
-                    <img src={item.iconName} className={classNames.fileIconImg} alt={`${item.fileType} file icon`} />
+                    <FontIcon aria-label={`${item.fileType} file icon`} iconName={item.iconName} />
+                    {/* <img src={item.iconName} className={classNames.fileIconImg} alt={`${item.fileType} file icon`} /> */}
                 </TooltipHost>
             ),
         },
@@ -178,7 +285,7 @@ const DocumentsTable: FunctionComponent = () => {
             onColumnClick: onColumnClick,
             onRender: (item: IDocument) => {
                 return <div>
-                    <Persona imageInitials="JD" text={item.modifiedBy} size={PersonaSize.size16} />
+                    <Persona text={item.modifiedBy} size={PersonaSize.size24} />
                 </div>;
             },
             isPadded: true,
@@ -199,17 +306,48 @@ const DocumentsTable: FunctionComponent = () => {
         },
         {
             key: 'column6',
+            name: 'File Status',
+            fieldName: 'fileStatus',
+            minWidth: 70,
+            maxWidth: 90,
+            isResizable: true,
+            data: 'number',
+            onColumnClick: onColumnClick,
+            onRender: (item: IDocument) => {
+                switch (item.fileStatus) {
+                    case 1:
+                        return <span>Processing</span>;
+
+                    case 2:
+                        return <span>Completed</span>;
+
+                    default:
+                        return <span>Error</span>;
+
+                }
+            },
+            isPadded: false
+        },
+        {
+            key: 'column7',
             name: 'Actions',
             minWidth: 70,
             maxWidth: 90,
             isResizable: false,
             onColumnClick: onColumnClick,
             onRender: (item: IDocument) => {
-                return <div>
-                    <IconButton iconProps={{ iconName: 'DocumentSearch' }} onClick={() => { showModal(); }} />
-                    <IconButton iconProps={{ iconName: 'Download' }} onClick={() => { }} />
-                    <IconButton iconProps={{ iconName: 'Delete' }} onClick={() => { showConfirmDelete(); }} />
-                </div>;
+                if (item.fileStatus === 2 && item.fileType !== 'Invalid') {
+                    return <div>
+                        <IconButton iconProps={{ iconName: 'DocumentSearch' }} onClick={() => { getItemDocument(item); }} />
+                        <IconButton iconProps={{ iconName: 'Download' }} onClick={() => { getItemOutput(item); }} />
+                        <IconButton iconProps={{ iconName: 'Delete' }} onClick={() => { promptToDelete(item); }} />
+                    </div>;
+                }
+                else {
+                    return <div>
+                        <IconButton iconProps={{ iconName: 'Delete' }} onClick={() => { promptToDelete(item); }} />
+                    </div>;
+                }
             },
             isPadded: false
         },
@@ -220,7 +358,7 @@ const DocumentsTable: FunctionComponent = () => {
             textAlign: 'left',
             alignItems: 'start'
         },
-        comboBox: {}, pageNumber: {}, previousNextPage: {}, previousNextPageDisabled: {}, visibleItemLabel: {}
+        comboBox: {}, pageNumber: { color: 'inherit !important', textDecoration: 'inherit !important' }, previousNextPage: {}, previousNextPageDisabled: {}, visibleItemLabel: {}
     }
 
     const labelId: string = useId('dialogLabel');
@@ -237,47 +375,9 @@ const DocumentsTable: FunctionComponent = () => {
         [labelId, subTextId],
     );
 
-    function generateDocuments() {
-        const items: IDocument[] = [];
-        for (let i = 0; i < 10; i++) {
-            const randomDate = new Date(Date.now());
-            const randomFileSize = 123;
-
-            let randomFileType = 'PDF';
-
-            if (i % 2 === 0)
-                randomFileType = 'Photo'
-
-            const randomFileIcon = `https://static2.sharepointonline.com/files/fabric/assets/item-types/16/${randomFileType.toLowerCase()}.svg`;
-
-
-            let fileName = `test ${i + 1}`;
-            fileName = fileName.charAt(0).toUpperCase() + fileName.slice(1).concat(` - ${randomFileType}`);
-            let userName = `John Doe`
-            userName = userName
-                .split(' ')
-                .map((name: string) => name.charAt(0).toUpperCase() + name.slice(1))
-                .join(' ');
-            items.push({
-                key: i.toString(),
-                name: fileName,
-                value: fileName,
-                iconName: randomFileIcon,
-                fileType: randomFileType,
-                modifiedBy: userName,
-                dateModified: randomDate.toLocaleDateString(),
-                dateModifiedValue: randomDate.valueOf(),
-                fileSize: randomFileSize.toString(),
-                fileSizeRaw: randomFileSize,
-            });
-        }
-        return items;
-    }
-
-    const items = generateDocuments();
-
     return (
         <div>
+            <a id="downloadLink" style={{ display: 'none' }}></a>
             <DetailsList
                 items={items}
                 compact={true}
@@ -288,9 +388,9 @@ const DocumentsTable: FunctionComponent = () => {
                 layoutMode={DetailsListLayoutMode.justified}
                 isHeaderVisible={true}
             />
-            <Pagination pageCount={20}
+            <Pagination pageCount={1}
                 styles={paginationStyles}
-                selectedPageIndex={18}
+                selectedPageIndex={0}
                 format={'buttons'}
                 numberOfPageButton={5}
                 firstPageIconProps={{ iconName: 'DoubleChevronLeft' }}
@@ -329,11 +429,11 @@ const DocumentsTable: FunctionComponent = () => {
                 modalProps={modalProps}
             >
                 <div className={contentStyles.body}>
-                    <p>TestFile1.pdf</p>
+                    <p>{deleteItem.name}</p>
                 </div>
                 <DialogFooter>
-                    <PrimaryButton onClick={hideConfirmDelete} text="Delete" />
-                    <DefaultButton onClick={hideConfirmDelete} text="Cancel" />
+                    <PrimaryButton onClick={confirmDelete} text="Delete" />
+                    <DefaultButton onClick={closeDelete} text="Cancel" />
                 </DialogFooter>
             </Dialog>
         </div>

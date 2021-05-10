@@ -31,11 +31,15 @@ exports.getDocumentsHandler = async (event) => {
     });
 
     await client.connect()
-    const res = await client.query('SELECT document_id, name, added_date, added_by, size, status_id, type_id FROM public.documents;')
+    const res = await client.query('SELECT document_id, name, added_date, added_by, size, status_id, type_id FROM public.documents WHERE marked_for_removal = false;')
     await client.end()
 
     const response = {
         statusCode: 200,
+        headers: {
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Methods": "GET"
+        },
         body: JSON.stringify(res.rows)
     };
 
