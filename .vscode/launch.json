@@ -2,6 +2,14 @@
     "version": "0.2.0",
     "configurations": [
         {
+            "name": "Node: Current File",
+            "type": "node",
+            "request": "launch",
+            "program": "${file}",
+            "cwd": "${fileDirname}",        
+            "console": "integratedTerminal",
+        },
+        {
             "name": "Python: Current File",
             "type": "python",
             "request": "launch",
