@@ -56,9 +56,14 @@ def lambda_handler(event, context):
     return file_type
 
 if __name__ == "__main__":
+    from dotenv import load_dotenv, dotenv_values
+    load_dotenv('./.env.dev')
+
     # event = {"detail": {"requestParameters": {"bucketName": "text-extraction-maindocumentbucket-a8qgfmjqltvw", "key": "f5471-5.tif"}}}
     # event = {"detail": {"requestParameters": {"bucketName": "text-extraction-maindocumentbucket-a8qgfmjqltvw", "key": "f5471.pdf"}}}
-    event = {"detail": {"requestParameters": {"bucketName": "text-extraction-maindocumentbucket-a8qgfmjqltvw", "key": "f5471output.box"}}}
+    # event = {"detail": {"requestParameters": {"bucketName": "text-extraction-maindocumentbucket-a8qgfmjqltvw", "key": "f5471output.box"}}}
     # event = {"detail": {"requestParameters": {"bucketName": "text-extraction-maindocumentbucket-a8qgfmjqltvw", "key": "invalid"}}}
+    event = {"detail": {'requestParameters': {'bucketName': 'text-extraction-maindocumentbucket-a8qgfmjqltvw', 'Host': 'text-extraction-maindocumentbucket-a8qgfmjqltvw.s3.us-west-2.amazonaws.com', 'Expires': '1621802614', 'key': '28300777-5c02-4602-8620-218b0ab2abdb', 'Content-Type': 'application/pdf'}}}
+    
     output = lambda_handler(event, [])
     print(output)

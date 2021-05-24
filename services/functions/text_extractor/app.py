@@ -56,6 +56,10 @@ def lambda_handler(event, context):
         resource_bucket = os.getenv('DOCUMENT_BUCKET')
         images.append(document_id)
     elif(event['file_type'] == 'PDF'):
+        if(event['text_output'] != []):
+            logger.info('Embedded text has already been extracted.')
+            return event
+
         resource_bucket = os.getenv('PROCESSED_BUCKET')
         images.extend(event['image_output'])
     else:
@@ -67,7 +71,7 @@ def lambda_handler(event, context):
 
     if(total_images > 1):
         os.environ['OMP_THREAD_LIMIT'] = '1'
-        num_processes = os.environ['NUMBER_PROCESSES']
+        num_processes =  int(os.environ['NUMBER_PROCESSES'])
     
     logger.info(f'Starting Execution: {num_processes} max processes')
 
@@ -124,7 +128,7 @@ def lambda_handler(event, context):
                 logger.info(f'Page {item[2]}, {item[1]} Complete!')
 
     end = time.time()
-    logger.info(f'OCR Complete: {total_images} compelted in {end - start} seconds')
+    logger.info(f'OCR Complete: {total_images} completed in {end - start} seconds')
 
     text_name = f'{document_id}/Text/output.json'
     s3 = boto3.client('s3')

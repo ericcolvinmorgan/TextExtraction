@@ -31,7 +31,7 @@ exports.getDocumentsHandler = async (event) => {
     });
 
     await client.connect()
-    const res = await client.query('SELECT document_id, name, added_date, added_by, size, status_id, type_id FROM public.documents WHERE marked_for_removal = false;')
+    const res = await client.query('SELECT document_id, name, added_date, added_by, size, status_id, type_id FROM public.documents WHERE marked_for_removal = false ORDER BY added_date DESC;')
     await client.end()
 
     const response = {

@@ -84,7 +84,7 @@ def lambda_handler(event, context):
         processed_page = Page(page_num, page_rect.height, page_rect.width, 72, 72, page_text)
         processed_document.add_page(processed_page)
 
-        if(page_text != ''):
+        if(len(page_text) > 5):
             has_text = True
             text_list = page.text_list()
 
