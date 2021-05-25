@@ -23,6 +23,8 @@ export interface IDocument {
     modifiedBy: string;
     dateModified: string;
     dateModifiedValue: number;
+    dateExpiration: string;
+    dateExpirationValue: number;    
     fileSize: string;
     fileSizeRaw: number;
 }
@@ -49,6 +51,7 @@ const DocumentsTable: FunctionComponent = () => {
 
         for (var i = 0; i < getDocuments.response.length; i++) {
             const fileDate = new Date(getDocuments.response[i].added_date);
+            const fileExpiration = new Date(getDocuments.response[i].expire_date);
 
             let fileType = 'Unknown';
             let fileIcon = 'Unknown';
@@ -91,8 +94,10 @@ const DocumentsTable: FunctionComponent = () => {
                 fileStatus: getDocuments.response[i].status_id,
                 fileType: fileType,
                 modifiedBy: userName,
-                dateModified: fileDate.toLocaleDateString(),
+                dateModified: fileDate.toLocaleDateString() + ' ' + fileDate.toLocaleTimeString(),
                 dateModifiedValue: fileDate.valueOf(),
+                dateExpiration: fileExpiration.toLocaleDateString() + ' ' + fileExpiration.toLocaleTimeString(),
+                dateExpirationValue: fileExpiration.valueOf(),
                 fileSize: getDocuments.response[i].size.toString(),
                 fileSizeRaw: getDocuments.response[i].size,
             });
@@ -248,8 +253,8 @@ const DocumentsTable: FunctionComponent = () => {
             key: 'column2',
             name: 'Name',
             fieldName: 'name',
-            minWidth: 210,
-            maxWidth: 350,
+            minWidth: 150,
+            maxWidth: 300,
             isRowHeader: true,
             isResizable: true,
             isSorted: true,
@@ -264,8 +269,8 @@ const DocumentsTable: FunctionComponent = () => {
             key: 'column3',
             name: 'Date Modified',
             fieldName: 'dateModifiedValue',
-            minWidth: 70,
-            maxWidth: 90,
+            minWidth: 120,
+            maxWidth: 120,
             isResizable: true,
             onColumnClick: onColumnClick,
             data: 'number',
@@ -276,6 +281,20 @@ const DocumentsTable: FunctionComponent = () => {
         },
         {
             key: 'column4',
+            name: 'Expiration Date',
+            fieldName: 'dateExpirationValue',
+            minWidth: 120,
+            maxWidth: 120,
+            isResizable: true,
+            onColumnClick: onColumnClick,
+            data: 'number',
+            onRender: (item: IDocument) => {
+                return <span>{item.dateExpiration}</span>;
+            },
+            isPadded: true,
+        },
+        {
+            key: 'column5',
             name: 'Modified By',
             fieldName: 'modifiedBy',
             minWidth: 70,
@@ -291,7 +310,7 @@ const DocumentsTable: FunctionComponent = () => {
             isPadded: true,
         },
         {
-            key: 'column5',
+            key: 'column6',
             name: 'File Size',
             fieldName: 'fileSizeRaw',
             minWidth: 70,
@@ -305,7 +324,7 @@ const DocumentsTable: FunctionComponent = () => {
             isPadded: false
         },
         {
-            key: 'column6',
+            key: 'column7',
             name: 'File Status',
             fieldName: 'fileStatus',
             minWidth: 70,
@@ -329,7 +348,7 @@ const DocumentsTable: FunctionComponent = () => {
             isPadded: false
         },
         {
-            key: 'column7',
+            key: 'column8',
             name: 'Actions',
             minWidth: 70,
             maxWidth: 90,

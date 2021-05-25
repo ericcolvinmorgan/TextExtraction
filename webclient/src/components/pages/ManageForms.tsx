@@ -7,18 +7,27 @@ import { Modal } from '@fluentui/react/lib/components/Modal';
 import React, { FunctionComponent, useState } from 'react';
 import DocumentsPanel from '../tables/DocumentsTable';
 import UploadDocumentPanel from '../panels/UploadDocumentPanel';
-import { Text } from '@fluentui/react';
+import { Spinner, Text } from '@fluentui/react';
 import { IconButton } from '@fluentui/react/lib/Button';
 import { IButtonStyles } from '@fluentui/react/lib/Button';
 import { FontWeights } from '@fluentui/react/lib/Styling';
 import { useTheme } from '@fluentui/react/lib/Theme';
-import { useBoolean } from '@fluentui/react-hooks';
+import { useId, useBoolean } from '@fluentui/react-hooks';
 import { mergeStyleSets } from '@fluentui/react/lib/Styling';
 import { TextField } from '@fluentui/react/lib/TextField';
+import { useFetch } from '../../hooks/useFetch';
+import { Dialog } from '@fluentui/react/lib/components/Dialog';
+import { DialogType } from '@fluentui/react/lib/components/Dialog';
+import { DialogFooter } from '@fluentui/react/lib/components/Dialog';
+import { PrimaryButton } from '@fluentui/react/lib/components/Button';
+import { DefaultButton } from '@fluentui/react/lib/components/Button';
 
 const ManageForms: FunctionComponent = () => {
+    const [wikiTopic, setWikiTopic] = useState('');
+    const fetchResource = useFetch<any>("", { method: "GET" }, {});
     const [isOpen, setIsOpen] = useState(false);
-    const [isModalOpen, { setTrue: showModal, setFalse: hideModal }] = useBoolean(false);
+    const [isWikiModalOpen, { setTrue: showWikiModal, setFalse: hideWikiModal }] = useBoolean(false);
+    const [isCryptoModalOpen, { setTrue: showCryptoModal, setFalse: hideCryptoModal }] = useBoolean(false);
     const theme = useTheme();
 
     const contentStyles = mergeStyleSets({
@@ -50,7 +59,7 @@ const ManageForms: FunctionComponent = () => {
             },
         },
     });
-    
+
     const iconButtonStyles: Partial<IButtonStyles> = {
         root: {
             color: theme.palette.neutralPrimary,
@@ -67,7 +76,7 @@ const ManageForms: FunctionComponent = () => {
         root: {
             margin: '0 auto',
             width: `1200px`,
-            marginBottom:'50px'
+            marginBottom: '50px'
         }
     };
 
@@ -93,7 +102,13 @@ const ManageForms: FunctionComponent = () => {
             key: 'importDocuments',
             text: 'Extract Wikipedia PDFs/Images',
             iconProps: { iconName: 'Import' },
-            onClick: showModal
+            onClick: showWikiModal
+        },
+        {
+            key: 'importCrypto',
+            text: 'Extract Crypto Rates',
+            iconProps: { iconName: 'AllCurrency' },
+            onClick: showCryptoModal
         },
         {
             key: 'refreshDocuments',
@@ -101,7 +116,76 @@ const ManageForms: FunctionComponent = () => {
             iconProps: { iconName: 'Refresh' },
             onClick: () => window.location.reload()
         },
-    ];    
+    ];
+
+    const wikiModalBody = () => {
+        if (fetchResource.loading) {
+            return <Spinner label="Importing.  Please wait..." />
+        }
+        else {
+            return (
+                <div>
+                    <div className={contentStyles.body}>                    
+                        <Text>Enter the topic of the Wikipedia article from which to extract PDF references</Text>
+                        <TextField label="Topic" onChange={(ev, val) => {
+                                val = val === undefined ? '' : val;
+                                setWikiTopic(val);
+                            }}
+                            required />
+                    </div>
+                    <DialogFooter>
+                    <PrimaryButton onClick={async () => {
+                        const wikiReq = await fetchResource.sendRequest({}, `https://2m6qr0wvk7.execute-api.us-west-2.amazonaws.com/default/cs361-services?Type=Topic&Keyword=${wikiTopic}`);
+                        setWikiTopic('');
+                        hideWikiModal();
+                        window.location.reload();
+                    }} text="Import" />
+                    <DefaultButton onClick={() => {
+                        setWikiTopic('');
+                        hideWikiModal();
+                    }} text="Cancel" />
+                </DialogFooter>
+                </div>
+            );
+        }
+    }
+
+    const cryptoModalBody = () => {
+        if (fetchResource.loading) {
+            return <Spinner label="Importing.  Please wait..." />
+        }
+        else {
+            return (
+                <div>
+                    <div className={contentStyles.body}>                    
+                        <Text>Would you like to import the latest Crypto prices?</Text>
+                    </div>
+                    <DialogFooter>
+                    <PrimaryButton onClick={async () => {
+                        const cryptoReq = await fetchResource.sendRequest({}, "https://2m6qr0wvk7.execute-api.us-west-2.amazonaws.com/default/cs361-services?Type=Crypto");
+                        hideCryptoModal();
+                        window.location.reload();
+                    }} text="Import" />
+                    <DefaultButton onClick={hideCryptoModal} text="Cancel" />
+                </DialogFooter>
+                </div>
+            );
+        }
+    }
+
+    const labelId: string = useId('dialogLabel');
+    const subTextId: string = useId('subTextLabel');
+
+    const modalProps = React.useMemo(
+        () => ({
+            titleAriaId: labelId,
+            subtitleAriaId: subTextId,
+            isBlocking: false,
+            styles: { main: { maxWidth: 450 } },
+            dragOptions: undefined,
+        }),
+        [labelId, subTextId],
+    );
 
     return (
         <div>
@@ -113,27 +197,33 @@ const ManageForms: FunctionComponent = () => {
                     ariaLabel="Breadcrumb with items rendered as buttons"
                     overflowAriaLabel="More links"
                 />
-                <Stack styles={{ root: {textAlign: "start"}}}>
+                <Stack styles={{ root: { textAlign: "start" } }}>
+                <Text variant={'xxLarge'}>New Features!</Text>
+                        <Text>Two new import options have been added!  These imports all you to streamline importing documents from a standard source.  They help you save time by not having to download and organize these files manually.  Please note, the previous functionality to upload any file of your choice still exists and remains in the same location!</Text>
+                        <li><Text>Extract Wikipedia PDFs/Images - Extract text from PDF references found in a wikipedia article on a given topic.</Text></li>
+                        <li><Text>Extract Crypto Rates - Import and extract text from the Crypto rate service.</Text></li>
+                    <br />
                     <Text variant={'xxLarge'}>Instructions</Text>
                     <Text>This page is used to manage your uploaded documents.  After uploading, PDF documents will be converted to image files, and data will be extracted from all documents.</Text>
                     <br />
                     <Text variant={'xLarge'}>Command Bar</Text>
                     <ul>
-                    <li><Text>Click on the "New" button below to upload a new document.</Text></li>
-                    <li><Text>Click on the "Extract Wikipedia PDFs/Images" button below to import and extract text from all images and PDFs found in a wikipedia article.</Text></li>
+                        <li><Text>Click on the "New" button below to upload a new document.</Text></li>
+                        <li><Text>Click on the "Extract Wikipedia PDFs/Images" button below to import and extract text from PDF references found in a wikipedia article on a given topic.</Text></li>
+                        <li><Text>Click on the "Extract Crypto Rates" button below to import and extract text from the Crypto rate service.</Text></li>
                     </ul>
-                    
+
                     <Text variant={'xLarge'}>Table</Text>
                     <ul>
-                    <li><Text>Columns below are resizable and can be expanded/shrunk as desired.</Text></li>
-                    <li><Text>Columns can be reordered by clicking on the header.</Text></li>
-                    <li><Text>The actions section contains buttons that can be clicked to trigger an action on that item.</Text>
-                    <ul>
-                        <li>View - View current document in a popup.</li>
-                        <li>Download - Download document package including original document, converted images, and extracted text.</li>
-                        <li>Delete - Permanently delete all document items (including converted images, and extracted data)</li>
-                    </ul>
-                    </li>
+                        <li><Text>Columns below are resizable and can be expanded/shrunk as desired.</Text></li>
+                        <li><Text>Columns can be reordered by clicking on the header.</Text></li>
+                        <li><Text>The actions section contains buttons that can be clicked to trigger an action on that item.</Text>
+                            <ul>
+                                <li>View - View current document in a popup.</li>
+                                <li>Download - Download document package including original document, converted images, and extracted text.</li>
+                                <li>Delete - Permanently delete all document items (including converted images, and extracted data)</li>
+                            </ul>
+                        </li>
                     </ul>
                 </Stack>
             </Stack>
@@ -149,26 +239,34 @@ const ManageForms: FunctionComponent = () => {
             </Stack>
             <UploadDocumentPanel isOpen={isOpen} setIsOpen={setIsOpen}></UploadDocumentPanel>
 
-            <Modal
-                isOpen={isModalOpen}
-                onDismiss={hideModal}
-                isBlocking={false}
-                containerClassName={contentStyles.container}
+            <Dialog
+                hidden={!isWikiModalOpen}
+                onDismiss={() => {
+                    setWikiTopic('');
+                    hideWikiModal()
+                }}
+                dialogContentProps={{
+                    type: DialogType.largeHeader,
+                    title: 'Confirm import',
+                    closeButtonAriaLabel: 'Close'
+                }}
+                modalProps={modalProps}
             >
-                <div className={contentStyles.header}>
-                    <span>Extract Wikipedia Documents</span>
-                    <IconButton
-                        styles={iconButtonStyles}
-                        iconProps={{ iconName: 'Cancel' }}
-                        ariaLabel="Close popup modal"
-                        onClick={hideModal}
-                    />
-                </div>
-                <div className={contentStyles.body}>
-                    <Text>Enter the address to the Wikipedia article from which to extract PDF references</Text>
-                    <TextField label="Set Location" iconProps={{ iconName: 'Download' }} onClick={() => { console.log('Select Location') }} required />
-                </div>
-            </Modal>
+                {wikiModalBody()}
+            </Dialog>
+
+            <Dialog
+                hidden={!isCryptoModalOpen}
+                onDismiss={hideCryptoModal}
+                dialogContentProps={{
+                    type: DialogType.largeHeader,
+                    title: 'Confirm import',
+                    closeButtonAriaLabel: 'Close'
+                }}
+                modalProps={modalProps}
+            >
+                {cryptoModalBody()}
+            </Dialog>
         </div>
     );
 }

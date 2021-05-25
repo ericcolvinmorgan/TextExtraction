@@ -50,5 +50,5 @@ const getExample = async () =>
     console.log(textDetail.pages[0].page_text.entry);
 }
 
-postExample();
+// postExample();
 getExample();

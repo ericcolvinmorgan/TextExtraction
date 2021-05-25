@@ -196,11 +196,11 @@ exports.handler = async (event, context) => {
     };
 };
 
-const event = {
-    "queryStringParameters": {
-        "Keyword": "Seattle",
-        "Type": "Crypto"
-    }
-}
+// const event = {
+//     "queryStringParameters": {
+//         "Keyword": "Seattle",
+//         "Type": "Crypto"
+//     }
+// }
 
-exports.handler(event);
+// exports.handler(event);

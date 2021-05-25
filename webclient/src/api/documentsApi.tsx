@@ -47,8 +47,6 @@ export const useGetDocumentById = (id: string, params: URLSearchParams) => {
         method: "GET",
     }
 
-    console.log(url.toString());
-
     return useFetch<any>(url.toString(), options, [])
 }
 

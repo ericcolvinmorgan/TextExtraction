@@ -35,7 +35,7 @@ exports.getByIdHandler = async (event) => {
 
   await client.connect()
   let data = {};
-  const res = await client.query(`SELECT location, detail -> 'file_type' AS file_type, detail -> 'text_output' AS text_output, detail -> 'image_output' AS image_output, detail -> 'error-info' AS error_info FROM public.documents WHERE document_id=$1`, [id]);
+  const res = await client.query(`SELECT location, status_id, detail -> 'file_type' AS file_type, detail -> 'text_output' AS text_output, detail -> 'image_output' AS image_output, detail -> 'error-info' AS error_info FROM public.documents WHERE document_id=$1`, [id]);
   await client.end();
 
   if (res.rows.length > 0) {
