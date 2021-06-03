@@ -11,16 +11,13 @@ export const useFetch = <T, >(url: string, options: any, initialState: T):
       setLoading(true);
 
       let requestEndpoint = endpoint;
-      console.log(updatedEndpoint);
       if(updatedEndpoint !== "")
       {
-        console.log("Updating Endpoint");
         updateEndpoint(updatedEndpoint);
         requestEndpoint = updatedEndpoint;
       }
 
       try {
-        console.log(requestEndpoint);
         const requestOptions = {...options, ...updatedOptions}
         const responseData = await fetch(requestEndpoint, requestOptions);
         const responseJson = await responseData.json();
@@ -28,6 +25,7 @@ export const useFetch = <T, >(url: string, options: any, initialState: T):
         setLoading(false);
         return responseJson;
       } catch (error) {
+        console.log(error);
         setError(error);
         setLoading(false);
         return error;

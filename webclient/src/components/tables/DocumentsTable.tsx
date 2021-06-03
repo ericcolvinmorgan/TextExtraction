@@ -1,18 +1,18 @@
 import { IPaginationStyles } from '@fluentui/react-experiments/lib/components/Pagination';
 import { Pagination } from '@fluentui/react-experiments/lib/components/Pagination';
-import { DefaultButton, IButtonStyles, IconButton, PrimaryButton } from '@fluentui/react/lib/components/Button';
+import { DefaultButton, IconButton, PrimaryButton } from '@fluentui/react/lib/components/Button';
 import { DetailsList, DetailsListLayoutMode, IColumn, SelectionMode } from '@fluentui/react/lib/components/DetailsList';
-import { Modal } from '@fluentui/react/lib/components/Modal';
 import { Persona } from '@fluentui/react/lib/components/Persona/Persona';
 import { TooltipHost } from '@fluentui/react/lib/components/Tooltip';
 import { FontWeights, mergeStyleSets } from '@fluentui/react/lib/Styling';
 import { useId, useBoolean } from '@fluentui/react-hooks';
-import React, { FunctionComponent, useEffect, useState } from 'react';
+import React, { FunctionComponent, useCallback, useEffect, useRef, useState } from 'react';
 import { useTheme } from '@fluentui/react/lib/utilities/ThemeProvider';
 import { PersonaSize } from '@fluentui/react/lib/components/Persona';
 import { Dialog, DialogFooter, DialogType, FontIcon } from '@fluentui/react';
 import { useDeleteDocumentById, useGetDocumentById, useGetDocuments } from '../../api/documentsApi';
 import { useHistory } from 'react-router-dom';
+import { getDocumentsResponse } from '../../models/documents';
 
 export interface IDocument {
     key: string;
@@ -32,33 +32,25 @@ export interface IDocument {
 
 const DocumentsTable: FunctionComponent = () => {
     const history = useHistory();
-    const [isModalOpen, { setTrue: showModal, setFalse: hideModal }] = useBoolean(false);
     const [isConfirmDeleteOpen, { setTrue: showConfirmDelete, setFalse: hideConfirmDelete }] = useBoolean(false);
     const [items, updateItems] = useState([] as IDocument[]);
     const [deleteItem, updateDeleteItem] = useState({} as IDocument);
-    const getDocuments = useGetDocuments(new URLSearchParams([['pageSize', '10']]));
+    const getDocuments = useRef(useGetDocuments(new URLSearchParams([['pageSize', '10']])));
     const getDocumentById = useGetDocumentById('', new URLSearchParams([['getdocument', 'true']]));
-    const getOutputById = useGetDocumentById('', new URLSearchParams([['getoutput', 'true']]));
     const deleteDocumentById = useDeleteDocumentById('', new URLSearchParams());
 
     const theme = useTheme();
 
-    useEffect(() => {
-        getDocuments.sendRequest({});
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [getDocuments.endpoint]);
-
-    useEffect(() => {
+    const updateDocumentItems = useCallback((documents: getDocumentsResponse[]) => {
         const updatedItems: IDocument[] = [];
-
-        for (var i = 0; i < getDocuments.response.length; i++) {
-            const fileDate = new Date(getDocuments.response[i].added_date);
-            const fileExpiration = new Date(getDocuments.response[i].expire_date);
+        for (var i = 0; i < documents.length; i++) {
+            const fileDate = new Date(documents[i].added_date);
+            const fileExpiration = new Date(documents[i].expire_date);
 
             let fileType = 'Unknown';
             let fileIcon = 'Unknown';
 
-            switch (getDocuments.response[i].type_id) {
+            switch (documents[i].type_id) {
                 case -1:
                     fileType = 'Invalid';
                     fileIcon = '';
@@ -74,7 +66,7 @@ const DocumentsTable: FunctionComponent = () => {
                     break;
             }
 
-            let fileName = getDocuments.response[i].name;
+            let fileName = documents[i].name;
             fileName = fileName.charAt(0).toUpperCase() + fileName.slice(1).concat(` - ${fileType}`);
 
             let userName = "Test User";
@@ -89,24 +81,29 @@ const DocumentsTable: FunctionComponent = () => {
                 .join(' ');
 
             updatedItems.push({
-                key: getDocuments.response[i].document_id,
+                key: documents[i].document_id,
                 name: fileName,
                 value: fileName,
                 iconName: fileIcon,
-                fileStatus: getDocuments.response[i].status_id,
+                fileStatus: documents[i].status_id,
                 fileType: fileType,
                 modifiedBy: userName,
                 dateModified: fileDate.toLocaleDateString() + ' ' + fileDate.toLocaleTimeString(),
                 dateModifiedValue: fileDate.valueOf(),
                 dateExpiration: fileExpiration.toLocaleDateString() + ' ' + fileExpiration.toLocaleTimeString(),
                 dateExpirationValue: fileExpiration.valueOf(),
-                fileSize: getDocuments.response[i].size.toString(),
-                fileSizeRaw: getDocuments.response[i].size,
+                fileSize: documents[i].size.toString(),
+                fileSizeRaw: documents[i].size,
             });
         }
-
         updateItems(updatedItems);
-    }, [getDocuments.response]);
+    }, []);
+
+    useEffect(() => {
+        getDocuments.current.sendRequest({}).then(response => {
+            updateDocumentItems(response);
+        });
+    }, [getDocuments.current.endpoint, updateDocumentItems]);
 
     const promptToDelete = (item: any) => {
         updateDeleteItem(item);
@@ -115,7 +112,7 @@ const DocumentsTable: FunctionComponent = () => {
 
     const confirmDelete = async () => {
         await deleteDocumentById.sendRequest({}, `${process.env.REACT_APP_API_DOCUMENTS_ENDPOINT as string}/${deleteItem.key}`);
-        await getDocuments.sendRequest({});
+        await getDocuments.current.sendRequest({});
         hideConfirmDelete();
     }
 
@@ -183,19 +180,6 @@ const DocumentsTable: FunctionComponent = () => {
             },
         },
     });
-
-    const iconButtonStyles: Partial<IButtonStyles> = {
-        root: {
-            color: theme.palette.neutralPrimary,
-            marginLeft: 'auto',
-            marginTop: '4px',
-            marginRight: '2px',
-        },
-        rootHovered: {
-            color: theme.palette.neutralDark,
-        },
-    };
-
 
     const classNames = mergeStyleSets({
         fileIconHeaderIcon: {
@@ -401,6 +385,7 @@ const DocumentsTable: FunctionComponent = () => {
 
     return (
         <div>
+            {/* eslint-disable-next-line */}
             <a id="downloadLink" style={{ display: 'none' }}></a>
             <DetailsList
                 items={items}
@@ -422,25 +407,6 @@ const DocumentsTable: FunctionComponent = () => {
                 nextPageIconProps={{ iconName: 'ChevronRight' }}
                 lastPageIconProps={{ iconName: 'DoubleChevronRight' }}
             />
-            <Modal
-                isOpen={isModalOpen}
-                onDismiss={hideModal}
-                isBlocking={false}
-                containerClassName={contentStyles.container}
-            >
-                <div className={contentStyles.header}>
-                    <span>View Document</span>
-                    <IconButton
-                        styles={iconButtonStyles}
-                        iconProps={{ iconName: 'Cancel' }}
-                        ariaLabel="Close popup modal"
-                        onClick={hideModal}
-                    />
-                </div>
-                <div className={contentStyles.body}>
-                    <p>PDF/Image Here</p>
-                </div>
-            </Modal>
             <Dialog
                 hidden={!isConfirmDeleteOpen}
                 onDismiss={hideConfirmDelete}

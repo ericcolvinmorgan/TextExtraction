@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { useFetch } from '../hooks/useFetch';
 import { getDocumentsResponse, postDocumentRequest, postDocumentResponse } from '../models/documents';
 

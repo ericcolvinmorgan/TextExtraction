@@ -3,13 +3,10 @@
 import { Breadcrumb, IBreadcrumbItem } from '@fluentui/react/lib/components/Breadcrumb';
 import { CommandBar, ICommandBarItemProps } from '@fluentui/react/lib/components/CommandBar';
 import { IStackStyles, Stack } from '@fluentui/react/lib/components/Stack';
-import { Modal } from '@fluentui/react/lib/components/Modal';
 import React, { FunctionComponent, useState } from 'react';
 import DocumentsPanel from '../tables/DocumentsTable';
 import UploadDocumentPanel from '../panels/UploadDocumentPanel';
 import { Spinner, Text } from '@fluentui/react';
-import { IconButton } from '@fluentui/react/lib/Button';
-import { IButtonStyles } from '@fluentui/react/lib/Button';
 import { FontWeights } from '@fluentui/react/lib/Styling';
 import { useTheme } from '@fluentui/react/lib/Theme';
 import { useId, useBoolean } from '@fluentui/react-hooks';
@@ -59,18 +56,6 @@ const ManageForms: FunctionComponent = () => {
             },
         },
     });
-
-    const iconButtonStyles: Partial<IButtonStyles> = {
-        root: {
-            color: theme.palette.neutralPrimary,
-            marginLeft: 'auto',
-            marginTop: '4px',
-            marginRight: '2px',
-        },
-        rootHovered: {
-            color: theme.palette.neutralDark,
-        },
-    };
 
     const stackStyles: IStackStyles = {
         root: {
@@ -135,7 +120,7 @@ const ManageForms: FunctionComponent = () => {
                     </div>
                     <DialogFooter>
                     <PrimaryButton onClick={async () => {
-                        const wikiReq = await fetchResource.sendRequest({}, `https://2m6qr0wvk7.execute-api.us-west-2.amazonaws.com/default/cs361-services?Type=Topic&Keyword=${wikiTopic}`);
+                        await fetchResource.sendRequest({}, `https://2m6qr0wvk7.execute-api.us-west-2.amazonaws.com/default/cs361-services?Type=Topic&Keyword=${wikiTopic}`);
                         setWikiTopic('');
                         hideWikiModal();
                         window.location.reload();
@@ -162,7 +147,7 @@ const ManageForms: FunctionComponent = () => {
                     </div>
                     <DialogFooter>
                     <PrimaryButton onClick={async () => {
-                        const cryptoReq = await fetchResource.sendRequest({}, "https://2m6qr0wvk7.execute-api.us-west-2.amazonaws.com/default/cs361-services?Type=Crypto");
+                        await fetchResource.sendRequest({}, "https://2m6qr0wvk7.execute-api.us-west-2.amazonaws.com/default/cs361-services?Type=Crypto");
                         hideCryptoModal();
                         window.location.reload();
                     }} text="Import" />

@@ -3,25 +3,25 @@
 import { Breadcrumb, IBreadcrumbItem } from '@fluentui/react/lib/components/Breadcrumb';
 import { CommandBar, ICommandBarItemProps } from '@fluentui/react/lib/components/CommandBar';
 import { IStackStyles, Stack } from '@fluentui/react/lib/components/Stack';
+import { Slider } from '@fluentui/react/lib/components/Slider';
 import { FunctionComponent, useEffect, useState, useRef } from 'react';
 import { Spinner, Text } from '@fluentui/react';
-import { useTheme } from '@fluentui/react/lib/Theme';
 import { useGetDocumentById } from '../../api/documentsApi';
 import { useParams } from 'react-router-dom';
-import { useFetch } from '../../hooks/useFetch';
 import DocumentViewer from '../document_viewer/DocumentViewer';
+import WordViewerPanel from '../panels/WordViewerPanel';
 
 const FormDetail: FunctionComponent = () => {
     const { documentId }: any = useParams();
-    const getDocumentById = useGetDocumentById('', new URLSearchParams([['getdocument', 'true']]));
+    const getDocumentById = useRef(useGetDocumentById('', new URLSearchParams([['getdocument', 'true']])));
     const [documentDetail, setDocumentDetail] = useState({} as any);
     const [isOpen, setIsOpen] = useState(false);
     const [selectedTextItem, setSelectedTextItem] = useState({} as any);
-    const theme = useTheme();
+    const [thresholds, setThresholds] = useState({maxLow: 60, maxMedium: 80})
 
     useEffect(() => {
-        if (!getDocumentById.loading)
-            getDocumentById.sendRequest({}, `${process.env.REACT_APP_API_DOCUMENTS_ENDPOINT as string}/${documentId}`)
+        if (!getDocumentById.current.loading)
+            getDocumentById.current.sendRequest({}, `${process.env.REACT_APP_API_DOCUMENTS_ENDPOINT as string}/${documentId}`)
                 .then(data => {
                     const options: any = {
                         method: "GET"
@@ -35,13 +35,13 @@ const FormDetail: FunctionComponent = () => {
                 .catch(error => {
                     console.log(error);
                 });
-    }, [getDocumentById.endpoint]);
+    }, [getDocumentById.current.endpoint, documentId]);
 
     const stackStyles: IStackStyles = {
         root: {
             margin: '0 auto',
             width: `1200px`,
-            marginBottom: '50px'
+            marginBottom: '10px'
         }
     };
 
@@ -57,13 +57,26 @@ const FormDetail: FunctionComponent = () => {
         { text: 'Document Viewer', key: 'f1', isCurrentItem: true },
     ];
 
+    const getItemDocument = async () => {
+        const detail = await getDocumentById.current.sendRequest({}, `${process.env.REACT_APP_API_DOCUMENTS_ENDPOINT as string}/${documentId}`);
+        const link = document.getElementById('downloadLink') as any;
+        link.href = detail.text_url;
+        link.click();
+    }
+
     const items: ICommandBarItemProps[] = [
         {
-            key: 'confirmDetail',
-            text: 'Confirm',
-            iconProps: { iconName: 'Add' },
-            onClick: () => window.location.reload()
+            key: 'downloadDetail',
+            text: 'Download',
+            iconProps: { iconName: 'Download' },
+            onClick: getItemDocument
         },
+        // {
+        //     key: 'confirmDetail',
+        //     text: 'Confirm',
+        //     iconProps: { iconName: 'Add' },
+        //     onClick: () => window.location.reload()
+        // },
         {
             key: 'refreshDocuments',
             text: 'Refresh',
@@ -74,20 +87,16 @@ const FormDetail: FunctionComponent = () => {
 
     const displayDocument = () => {
         let documentDisplay = [];
-        if (getDocumentById.loading) {
+        if (getDocumentById.current.loading) {
             documentDisplay.push(<div key={'document-page-loading'}>
                 <Spinner label="Loading.  Please wait..." />
             </div>)
         }
         else {
             if (documentDetail.images && documentDetail.text) {
-                console.log(documentDetail);
-                
-                for(let pageIndex = 0; pageIndex < documentDetail.text.page_count; pageIndex++)
-                {
-                    const textDetail = documentDetail.text.pages.find((page:any) => page.page_num == pageIndex + 1);
-                    console.log(`PAGE INDEX: ${pageIndex} TEXT: ${textDetail.page_num}`);
-                    documentDisplay.push(<DocumentViewer key={`document-page-${pageIndex + 1}`} image={documentDetail.images[pageIndex]} text={textDetail} setSelectedTextItem={setSelectedTextItem} />)
+                for (let pageIndex = 0; pageIndex < documentDetail.text.page_count; pageIndex++) {
+                    const textDetail = documentDetail.text.pages.find((page: any) => page.page_num === pageIndex + 1);
+                    documentDisplay.push(<DocumentViewer key={`document-page-${pageIndex + 1}`} image={documentDetail.images[pageIndex]} text={textDetail} thresholds={thresholds} setisopen={setIsOpen} setselectedtextitem={setSelectedTextItem} />)
                 }
             }
         }
@@ -96,6 +105,8 @@ const FormDetail: FunctionComponent = () => {
 
     return (
         <div>
+            {/* eslint-disable-next-line */}
+            <a id="downloadLink" style={{ display: 'none' }}></a>
             <Stack styles={stackStyles} horizontalAlign="start">
                 {/* <Text variant="xLarge">Document Manager</Text> */}
                 <Breadcrumb
@@ -110,7 +121,10 @@ const FormDetail: FunctionComponent = () => {
                     <br />
                     <Text variant={'xLarge'}>Command Bar</Text>
                     <ul>
-                        <li><Text>Click on the "Confirm" button to confirm detail.</Text></li>
+                        {/* <li><Text>Click on the "Confirm" button to confirm detail.</Text></li> */}
+                        <li><Text>Click on the "Download" button to download out JSON.</Text></li>
+                        <li><Text>Click on the "Refresh" button to refresh the screen.</Text></li>
+                        <li><Text>Use the below sliders to configure your preference around confidence thresholds.</Text></li>
                     </ul>
                 </Stack>
             </Stack>
@@ -121,9 +135,39 @@ const FormDetail: FunctionComponent = () => {
                     ariaLabel="Use left and right arrow keys to navigate between commands"
                     styles={commandBarStyles}
                 />
-                <div>{JSON.stringify(selectedTextItem)}</div>
+                <Stack horizontal styles={stackStyles}>
+                    <Stack.Item grow>
+                        <Stack>
+                            <Slider
+                                label="Max Low Confidence"
+                                min={0}
+                                max={thresholds.maxMedium}
+                                value={thresholds.maxLow}
+                                valueFormat={(value: number) => `${value}%`}
+                                onChange={(value) => {setThresholds({maxLow: value, maxMedium: thresholds.maxMedium})}}
+                                showValue
+                            />
+
+                        </Stack>
+                    </Stack.Item>
+                    <Stack.Item grow>
+                        <Stack>
+                            <Slider
+                                label="Max Medium Confidence"
+                                min={thresholds.maxLow}
+                                max={100}
+                                value={thresholds.maxMedium}
+                                valueFormat={(value: number) => `${value}%`}
+                                onChange={(value) => {setThresholds({maxLow: thresholds.maxLow, maxMedium: value})}}
+                                showValue
+                            />
+
+                        </Stack>
+                    </Stack.Item>
+                </Stack>
                 <div>{displayDocument()}</div>
             </Stack>
+            <WordViewerPanel isOpen={isOpen} setIsOpen={setIsOpen} selectedtextitem={selectedTextItem}></WordViewerPanel>
         </div>
     );
 }
