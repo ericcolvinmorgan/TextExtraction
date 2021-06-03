@@ -2,6 +2,8 @@ import { Spinner } from '@fluentui/react/lib/components/Spinner';
 import React, { useRef, useState } from 'react'
 import { useEffect } from 'react'
 
+const PAGE_SCALE = 2.2;
+
 const DocumentViewer = (props: any) => {
   
   const documentImage = props.image;
@@ -10,6 +12,11 @@ const DocumentViewer = (props: any) => {
   const canvasRef = useRef(null);
   const [loading, setLoading] = useState(true)
   let wordList = [] as any[];
+
+  const pageResX = 300.;
+  const pageResY = 300.;
+  const textResX = documentText.resolution_x;
+  const textResY = documentText.resolution_y;
 
   const getWords = (entry: any, entries: any[]) => {
     if (entry.hierarchy == "WORD") {
@@ -25,8 +32,8 @@ const DocumentViewer = (props: any) => {
   const handleCanvasClick = (e : MouseEvent) => {
     const canvas: HTMLCanvasElement = canvasRef.current as unknown as HTMLCanvasElement
     const rect = canvas.getBoundingClientRect()
-    const x = (e.clientX - rect.left) * 2.2
-    const y = (e.clientY - rect.top) * 2.2
+    const x = (e.clientX - rect.left) * PAGE_SCALE * (textResX/pageResX)
+    const y = (e.clientY - rect.top) * PAGE_SCALE * (textResY/pageResY)
     console.log(x, y);
     for(let word = 0; word < wordList.length; word++)
     {
@@ -59,21 +66,18 @@ const DocumentViewer = (props: any) => {
       image.onload = () => {
         const canvasWidth = image.width;
         const canvasHeight = image.height;
-        const textResX = documentText.resolution_x;
-        const textResY = documentText.resolution_y;
-
         context.canvas.width = canvasWidth;
         context.canvas.height = canvasHeight;
-        canvas.style.width = `${canvasWidth / 2.2}px`;
-        canvas.style.height = `${canvasHeight / 2.2}px`;
+        canvas.style.width = `${canvasWidth / PAGE_SCALE}px`;
+        canvas.style.height = `${canvasHeight / PAGE_SCALE}px`;
         context.drawImage(image, 0, 0, context.canvas.width, context.canvas.height);
         context.font = '20px verdana';
 
         for (let entryIndex = 0; entryIndex < wordList.length; entryIndex++) {
-          const x = wordList[entryIndex].x * (300. / textResX);
-          const y = wordList[entryIndex].y * (300. / textResY);
-          const width = wordList[entryIndex].width * (300. / textResX);
-          const height = wordList[entryIndex].height * (300. / textResY);
+          const x = wordList[entryIndex].x * (pageResX / textResX);
+          const y = wordList[entryIndex].y * (pageResY / textResY);
+          const width = wordList[entryIndex].width * (pageResX / textResX);
+          const height = wordList[entryIndex].height * (pageResY / textResY);
           
           if(wordList[entryIndex].confidence === -1 || wordList[entryIndex].confidence > 80) { //High Confidence
             context.fillStyle = 'rgba(0,255,0,0.7)';
