@@ -3,12 +3,13 @@ import React, { useRef, useState } from 'react'
 import { useEffect } from 'react'
 
 const DocumentViewer = (props: any) => {
-
+  
   const documentImage = props.image;
   const documentText = props.text;
-  const setSelectedItem = props.setSelectedItem;
+  const setSelectedItem = props.setSelectedTextItem;
   const canvasRef = useRef(null);
   const [loading, setLoading] = useState(true)
+  let wordList = [] as any[];
 
   const getWords = (entry: any, entries: any[]) => {
     if (entry.hierarchy == "WORD") {
@@ -24,9 +25,17 @@ const DocumentViewer = (props: any) => {
   const handleCanvasClick = (e : MouseEvent) => {
     const canvas: HTMLCanvasElement = canvasRef.current as unknown as HTMLCanvasElement
     const rect = canvas.getBoundingClientRect()
-    const x = e.clientX - rect.left
-    const y = e.clientY - rect.top
-    console.log("x: " + x + " y: " + y)
+    const x = (e.clientX - rect.left) * 2.2
+    const y = (e.clientY - rect.top) * 2.2
+    console.log(x, y);
+    for(let word = 0; word < wordList.length; word++)
+    {
+      if(wordList[word].x <= x && (wordList[word].x + wordList[word].width) >= x && wordList[word].y <= y && (wordList[word].y + wordList[word].height) >= y)
+      {
+        setSelectedItem({page:documentText.page_num, word:wordList[word], x, y});
+        return;
+      }
+    }
   }
 
   useEffect(() => {
@@ -42,7 +51,7 @@ const DocumentViewer = (props: any) => {
       //Setup canvas events
       canvas.onclick = handleCanvasClick;
       
-      const wordList = [] as any[];
+      wordList = [];
       getWords(documentText.page_text, wordList);
       
       const image = new Image();
@@ -69,7 +78,7 @@ const DocumentViewer = (props: any) => {
           if(wordList[entryIndex].confidence === -1 || wordList[entryIndex].confidence > 80) { //High Confidence
             context.fillStyle = 'rgba(0,255,0,0.7)';
           }
-          else if (wordList[entryIndex].confidence > 60 && wordList[entryIndex].confidence < 80) {  //Medium Confidence
+          else if (wordList[entryIndex].confidence > 60 && wordList[entryIndex].confidence <= 80) {  //Medium Confidence
             context.fillStyle = 'rgba(255,255,0,0.7)';
           }
           else {  //Low Confidence

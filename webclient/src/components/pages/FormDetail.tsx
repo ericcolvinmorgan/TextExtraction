@@ -16,6 +16,7 @@ const FormDetail: FunctionComponent = () => {
     const getDocumentById = useGetDocumentById('', new URLSearchParams([['getdocument', 'true']]));
     const [documentDetail, setDocumentDetail] = useState({} as any);
     const [isOpen, setIsOpen] = useState(false);
+    const [selectedTextItem, setSelectedTextItem] = useState({} as any);
     const theme = useTheme();
 
     useEffect(() => {
@@ -86,7 +87,7 @@ const FormDetail: FunctionComponent = () => {
                 {
                     const textDetail = documentDetail.text.pages.find((page:any) => page.page_num == pageIndex + 1);
                     console.log(`PAGE INDEX: ${pageIndex} TEXT: ${textDetail.page_num}`);
-                    documentDisplay.push(<DocumentViewer key={`document-page-${pageIndex + 1}`} image={documentDetail.images[pageIndex]} text={textDetail} />)
+                    documentDisplay.push(<DocumentViewer key={`document-page-${pageIndex + 1}`} image={documentDetail.images[pageIndex]} text={textDetail} setSelectedTextItem={setSelectedTextItem} />)
                 }
             }
         }
@@ -120,6 +121,7 @@ const FormDetail: FunctionComponent = () => {
                     ariaLabel="Use left and right arrow keys to navigate between commands"
                     styles={commandBarStyles}
                 />
+                <div>{JSON.stringify(selectedTextItem)}</div>
                 <div>{displayDocument()}</div>
             </Stack>
         </div>
