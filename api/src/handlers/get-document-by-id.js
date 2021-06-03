@@ -40,15 +40,22 @@ exports.getByIdHandler = async (event) => {
 
   if (res.rows.length > 0) {
     data = res.rows[0];
-    console.info('Recxord:', data);
+    console.info('Record:', data);
 
     const document_key = data.location;
-    document_url = await getDownloadURL(process.env.DOCUMENT_BUCKET, document_key);
+    document_url = await get_download_URL(process.env.DOCUMENT_BUCKET, document_key);
     data.document_url = document_url;
 
+    const image_keys = data.image_output;
+    data.image_urls = [];
+    for (image_idx = 0; image_idx < image_keys.length; image_idx++) {
+      image_url = await get_download_URL(process.env.PROCESSED_BUCKET, image_keys[image_idx]);
+      data.image_urls.push(image_url);
+    }
+    
     const text_key = data.text_output[0];
-    text_url = await getDownloadURL(process.env.PROCESSED_BUCKET, text_key);
-    data.text_url = text_url;
+    textUrl = await get_download_URL(process.env.PROCESSED_BUCKET, text_key);
+    data.text_url = textUrl;
   }
 
   const response = {
@@ -65,14 +72,12 @@ exports.getByIdHandler = async (event) => {
   return response;
 }
 
-const getDownloadURL = async function (bucket, key, contentType) {
-
-  // Get signed URL from S3
+// Get signed URL from S3
+const get_download_URL = async function (bucket, key, contentType) {
   const s3Params = {
     Bucket: bucket,
     Key: key,
-    Expires: parseInt(process.env.DOWNLOAD_EXPIRATION_SECONDS)//,
-    // ContentType: contentType
+    Expires: parseInt(process.env.DOWNLOAD_EXPIRATION_SECONDS)
   };
 
   const signedUrl = await s3.getSignedUrlPromise('getObject', s3Params);

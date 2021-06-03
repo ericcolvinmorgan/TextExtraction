@@ -1,5 +1,7 @@
+from typing import Union
 import boto3
 import botocore
+import copy
 import csv
 import cv2
 import json
@@ -65,6 +67,7 @@ def lambda_handler(event, context):
     else:
         raise 'Event file type is invalid'
 
+    converted_images = copy.deepcopy(images)
     start = time.time()
     total_images = len(images)
     num_processes = 1
@@ -80,6 +83,8 @@ def lambda_handler(event, context):
     processed_document = Document(DocumentType.IMAGE)
     processing_path = '/tmp/extraction/'
 
+    s3 = boto3.client('s3')
+
     for image_index, image_key in enumerate(images):
 
         #Stage image for processing
@@ -91,7 +96,7 @@ def lambda_handler(event, context):
         
         # Wait for current tasks to complete
         while (len(processes) == num_processes or image_index == (total_images - 1)) and len(processes) > 0:
-            item: [subprocess.Popen, str, int] = processes.popleft()
+            item: Union[subprocess.Popen, str, int] = processes.popleft()
             result = item[0].poll()
             if(result == None):
                 processes.append(item)
@@ -120,6 +125,15 @@ def lambda_handler(event, context):
                             
                             processed_page.add_text_entry(page_text_item)
 
+                # Save image for viewing
+                image_stream = BytesIO()
+                rgb_image = image.convert('RGB')
+                rgb_image.save(image_stream, format='jpeg', resolution=300, software='Text Extractor')
+                image_name = f'{document_id}/Viewer/page-{item[2]}.jpeg' 
+                image_stream.seek(0)     
+                s3.put_object(Bucket=output_bucket, Key=image_name, Body=image_stream)
+                converted_images[item[2] - 1] = image_name
+
                 # Clean Up Temp Files
                 os.remove(item[1])
                 os.remove(f'{item[1]}.tsv')
@@ -131,11 +145,11 @@ def lambda_handler(event, context):
     logger.info(f'OCR Complete: {total_images} completed in {end - start} seconds')
 
     text_name = f'{document_id}/Text/output.json'
-    s3 = boto3.client('s3')
     text_output = s3.put_object(Bucket=output_bucket, Key=text_name, Body=json.dumps(processed_document.to_json(), cls=DocumentEncoder).encode('UTF-8'))
     text.append(text_name)
 
     event['text_output'] = text
+    event['image_output'] = converted_images
     return event
 
 def stage_file(bucket, key, path):
@@ -150,7 +164,6 @@ def stage_file(bucket, key, path):
         s3.download_file(bucket, key, file_path)
 
     return file_path
-
 
 
 if __name__ == "__main__":

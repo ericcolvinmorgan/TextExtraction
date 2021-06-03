@@ -56,7 +56,23 @@
                     "Next": "Update File"
              } ],
             "ResultPath": "$",
-            "Next": "Process Images"
+            "Next": "PDF or OCR?"
+        },
+        "PDF or OCR?": {
+            "Type": "Choice",
+            "Choices": [
+                {
+                    "Variable": "$.text_source",
+                    "StringEquals": "PDF",
+                    "Next": "Update File"
+                },
+                {
+                    "Variable": "$.text_source",
+                    "StringEquals": "OCR",
+                    "Next": "Process Images"
+                }
+            ],
+            "Default": "Update File"
         },
         "Process Images": {
             "Type": "Task",

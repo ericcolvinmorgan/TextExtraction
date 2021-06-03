@@ -34,7 +34,6 @@ exports.postItemHandler = async (event) => {
         ssl: { rejectUnauthorized: false }        
     });
 
-    // Add entry to database
     console.info('Connecting To Database');
     await client.connect();
     const res = await client.query(

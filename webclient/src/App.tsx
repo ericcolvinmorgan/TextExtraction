@@ -6,6 +6,7 @@ import ManageForms from './components/pages/ManageForms';
 import Home from './components/pages/Home';
 import ManageTemplates from './components/pages/ManageTemplates';
 import TopNavigation from './components/navigation/TopNavigation';
+import FormDetail from './components/pages/FormDetail';
 
 const lightTheme: PartialTheme = {
   palette: {
@@ -82,7 +83,8 @@ const App = () => {
           >
             <Route path="/" exact component={Home} />
             <Route path="/index.html" exact component={Home} />
-            <Route path="/manageforms" component={ManageForms} />
+            <Route path="/manageforms" exact component={ManageForms} />
+            <Route path="/manageforms/:documentId" exact component={FormDetail} />
             <Route path="/managetemplates" component={ManageTemplates} />
           </Stack>
         </ThemeProvider>

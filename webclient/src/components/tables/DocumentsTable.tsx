@@ -12,6 +12,7 @@ import { useTheme } from '@fluentui/react/lib/utilities/ThemeProvider';
 import { PersonaSize } from '@fluentui/react/lib/components/Persona';
 import { Dialog, DialogFooter, DialogType, FontIcon } from '@fluentui/react';
 import { useDeleteDocumentById, useGetDocumentById, useGetDocuments } from '../../api/documentsApi';
+import { useHistory } from 'react-router-dom';
 
 export interface IDocument {
     key: string;
@@ -30,6 +31,7 @@ export interface IDocument {
 }
 
 const DocumentsTable: FunctionComponent = () => {
+    const history = useHistory();
     const [isModalOpen, { setTrue: showModal, setFalse: hideModal }] = useBoolean(false);
     const [isConfirmDeleteOpen, { setTrue: showConfirmDelete, setFalse: hideConfirmDelete }] = useBoolean(false);
     const [items, updateItems] = useState([] as IDocument[]);
@@ -128,12 +130,15 @@ const DocumentsTable: FunctionComponent = () => {
     }
 
     const getItemOutput = async (item: any) => {
-        const detail = await getDocumentById.sendRequest({}, `${process.env.REACT_APP_API_DOCUMENTS_ENDPOINT as string}/${item.key}`);
-        const link = document.getElementById('downloadLink') as any;
-        link.href = detail.text_url;
-        link.click();
-        console.log(detail);
-        hideConfirmDelete();
+        // const detail = await getDocumentById.sendRequest({}, `${process.env.REACT_APP_API_DOCUMENTS_ENDPOINT as string}/${item.key}`);
+        // const link = document.getElementById('downloadLink') as any;
+        // link.href = detail.text_url;
+        // link.click();
+        // console.log(detail);
+        // hideConfirmDelete();
+
+        history.push(`/ManageForms/${item.key}`);
+
     }
 
     const closeDelete = () => {
@@ -357,8 +362,8 @@ const DocumentsTable: FunctionComponent = () => {
             onRender: (item: IDocument) => {
                 if (item.fileStatus === 2 && item.fileType !== 'Invalid') {
                     return <div>
-                        <IconButton iconProps={{ iconName: 'DocumentSearch' }} onClick={() => { getItemDocument(item); }} />
-                        <IconButton iconProps={{ iconName: 'Download' }} onClick={() => { getItemOutput(item); }} />
+                        <IconButton iconProps={{ iconName: 'DocumentSearch' }} onClick={() => { getItemOutput(item); }} />
+                        <IconButton iconProps={{ iconName: 'Download' }} onClick={() => { getItemDocument(item); }} />
                         <IconButton iconProps={{ iconName: 'Delete' }} onClick={() => { promptToDelete(item); }} />
                     </div>;
                 }

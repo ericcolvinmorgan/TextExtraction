@@ -2,7 +2,7 @@ const AWS = require('aws-sdk');
 const { Client } = require('pg');
 
 /**
- * A simple example includes a HTTP get method to get all items from a DynamoDB table.
+ * HTTP get method to retrieve all documents and their current processing status.
  */
 exports.getDocumentsHandler = async (event) => {
     if (event.httpMethod !== 'GET') {
@@ -31,7 +31,9 @@ exports.getDocumentsHandler = async (event) => {
     });
 
     await client.connect()
-    const res = await client.query("SELECT document_id, name, added_date, added_date + interval '1' day * 7 as expire_date, added_by, size, status_id, type_id FROM public.documents WHERE marked_for_removal = false AND added_date + interval '1' day * 7 > now() ORDER BY added_date DESC;");
+    const res = await client.query(`SELECT document_id, name, added_date, added_date + interval '1' day * 7 as expire_date, 
+        added_by, size, status_id, type_id FROM public.documents 
+        WHERE marked_for_removal = false AND added_date + interval '1' day * 7 > now() ORDER BY added_date DESC;`);
     await client.end()
 
     const response = {
