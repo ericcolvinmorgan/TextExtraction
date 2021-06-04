@@ -7,7 +7,7 @@ import { Slider } from '@fluentui/react/lib/components/Slider';
 import { FunctionComponent, useEffect, useState, useRef } from 'react';
 import { Spinner, Text } from '@fluentui/react';
 import { useGetDocumentById } from '../../api/documentsApi';
-import { useParams } from 'react-router-dom';
+import { useHistory, useParams } from 'react-router-dom';
 import DocumentViewer from '../document_viewer/DocumentViewer';
 import WordViewerPanel from '../panels/WordViewerPanel';
 
@@ -18,6 +18,7 @@ const FormDetail: FunctionComponent = () => {
     const [isOpen, setIsOpen] = useState(false);
     const [selectedTextItem, setSelectedTextItem] = useState({} as any);
     const [thresholds, setThresholds] = useState({maxLow: 60, maxMedium: 80})
+    const history = useHistory();
 
     useEffect(() => {
         if (!getDocumentById.current.loading)
@@ -51,9 +52,21 @@ const FormDetail: FunctionComponent = () => {
         }
     };
 
+    const handleBreakcrumbClick = (event: React.MouseEvent<HTMLElement, MouseEvent> | undefined, element: IBreadcrumbItem | undefined) => {
+        if (event) {
+            event.preventDefault();
+        }
+
+        if(element)
+        {
+            if(element.href)
+                history.push(element.href);
+        }
+    }
+
     const breadcrumbItems: IBreadcrumbItem[] = [
-        { text: 'Main', key: 'Main', href: '/' },
-        { text: 'Manage Documents', key: 'ManageDocument', href: '/ManageForms/' },
+        { text: 'Main', key: 'Main', href: '/', onClick: handleBreakcrumbClick},
+        { text: 'Manage Documents', key: 'ManageDocument', href: '/ManageForms/', onClick: handleBreakcrumbClick},
         { text: 'Document Viewer', key: 'f1', isCurrentItem: true },
     ];
 
