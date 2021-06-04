@@ -112,7 +112,9 @@ const DocumentsTable: FunctionComponent = () => {
 
     const confirmDelete = async () => {
         await deleteDocumentById.sendRequest({}, `${process.env.REACT_APP_API_DOCUMENTS_ENDPOINT as string}/${deleteItem.key}`);
-        await getDocuments.current.sendRequest({});
+        await getDocuments.current.sendRequest({}).then(response => {
+            updateDocumentItems(response);
+        });
         hideConfirmDelete();
     }
 
