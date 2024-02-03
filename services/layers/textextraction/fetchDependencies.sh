@@ -97,7 +97,7 @@ curl -L https://github.com/uclouvain/openjpeg/archive/v2.4.0/openjpeg-${OPENJPEG
 curl https://download.osgeo.org/libtiff/tiff-${LIBTIFF_VERSION}.tar.gz | tar xzC ${LIBTIFF_BUILD_DIRECTORY} --strip-components=1
 curl ftp://ftp.acc.umu.se/pub/gnome/sources/gdk-pixbuf/2.42/gdk-pixbuf-${GDK_PIXBUF_VERSION}.tar.xz | tar xJC ${GDK_PIXBUF_BUILD_DIRECTORY} --strip-components=1
 curl ftp://xmlsoft.org/libxml2/libxml2-${LIBXML2_VERSION}.tar.gz | tar xzC ${LIBXML2_BUILD_DIRECTORY} --strip-components=1
-curl -L http://www.linuxfromscratch.org/patches/blfs/svn/libxml2-2.9.10-security_fixes-1.patch > ${LIBXML2_BUILD_DIRECTORY}/libxml2-2.9.10-security_fixes-1.patch
+curl -L https://lfs.sosconf.org/patches/downloads/libxml2/libxml2-2.9.10-security_fixes-1.patch > ${LIBXML2_BUILD_DIRECTORY}/libxml2-2.9.10-security_fixes-1.patch
 curl https://poppler.freedesktop.org/poppler-data-${POPPLER_DATA_VERSION}.tar.gz | tar xzC ${POPPLER_DATA_BUILD_DIRECTORY} --strip-components=1
 curl https://poppler.freedesktop.org/poppler-${POPPLER_VERSION}.tar.xz | tar xJC ${POPPLER_BUILD_DIRECTORY} --strip-components=1
 curl -L https://github.com/DanBloomberg/leptonica/releases/download/${LEPTONICA_VERSION}/leptonica-${LEPTONICA_VERSION}.tar.gz | tar xzC ${LEPTONICA_BUILD_DIRECTORY} --strip-components=1
